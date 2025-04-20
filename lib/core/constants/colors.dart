@@ -16,4 +16,12 @@ class AppColors {
   static const Color white = Colors.white;
   static const Color black = Colors.black;
   static const Color grey = Color(0xFF9E9E9E);
+
+  static const Color backgroundLight = Color(0xFFEDF1F7);
+  static const Color textPrimary = Color(0xFF333333);
+  static const Color textSecondary = Color(0xFF777777);
+  static const Color border = Color(0xFFEAEAEA);
+
+  static const Color danger = Colors.red;
+
 }

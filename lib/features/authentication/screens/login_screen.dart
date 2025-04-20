@@ -1,11 +1,17 @@
+import 'package:another_flushbar/flushbar.dart';
+import 'package:e_commerce_app/features/vendor/screens/vendor_home_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/background_decorations.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
+import '../../../core/providers/user_provider.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../widgets/auth_card.dart';
 import '../widgets/logo_widget.dart';
+import 'email_verification_screen.dart';
 import 'forgot_password_screen.dart';
 import 'signup_screen.dart';
 import '../services/auth_service.dart';
@@ -37,21 +43,44 @@ class _LoginScreenState extends State<LoginScreen> {
         _isLoading = true;
       });
       try {
-        await _authService.signIn(
+        User? user =  await _authService.signIn(
           _emailController.text.trim(),
           _passwordController.text.trim(),
         );
+
+        if (user!= null) {
+          await Provider.of<UserProvider>(context, listen: false)
+              .setCurrentUser(user);
+        }
+
         // Navigate to home screen or handle successful login
-        if (mounted) {
+        if (user!=null && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Login successful')),
           );
+          Future.delayed(const Duration(seconds: 1), () {
+            if (mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const VendorHomeScreen(),
+                ),
+              );
+            }
+          });
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Login failed: ${e.toString()}')),
-          );
+          String errorMessage = e.toString();
+
+          // Check if the error is related to email verification
+          if (errorMessage.contains('verify your email')) {
+            _showVerificationDialog();
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Login failed: $errorMessage')),
+            );
+          }
         }
       } finally {
         if (mounted) {
@@ -62,6 +91,75 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     }
   }
+
+  void _showVerificationDialog() {
+    FocusScope.of(context).unfocus();
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Email Not Verified: Please check your inbox for the verification link.')),
+      );
+
+    // Flushbar(
+    //   title: 'Email Not Verified',
+    //   message: 'Please check your inbox for the verification link.',
+    //   duration: Duration(seconds: 3),
+    //   backgroundColor: Colors.red,
+    //   flushbarPosition: FlushbarPosition.TOP,
+    // ).show(context);
+
+        // actions: [
+        //   TextButton(
+        //     onPressed: () {
+        //       Navigator.of(context).pop();
+        //       // Navigate to verification screen
+        //       Navigator.pushReplacement(
+        //         context,
+        //         MaterialPageRoute(
+        //           builder: (context) => EmailVerificationScreen(
+        //             email: _emailController.text.trim(),
+        //           ),
+        //         ),
+        //       );
+        //     },
+        //     child: const Text('Resend Email'),
+        //   ),
+        // ],
+  }
+
+  Future<void> _resendVerificationEmail() async {
+    try {
+      // First try to sign in to get the user authenticated
+      await _authService.signIn(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      // Then send verification email
+      await _authService.sendEmailVerification();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Verification email sent')),
+        );
+
+        // Navigate to verification screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EmailVerificationScreen(
+              email: _emailController.text.trim(),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send verification email: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const LogoWidget(),
                       const SizedBox(height: 24),
                       // Title inside the AuthCard
-                      const Text(
+                      Text(
                         'Log In',
                         style: AppTextStyles.heading,
                       ),
@@ -137,7 +235,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                   );
                                 },
-                                child: const Text(
+                                child: Text(
                                   'Forgot password?',
                                   style: AppTextStyles.linkText,
                                 ),
@@ -161,7 +259,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               );
                             },
-                            child: const Text(
+                            child: Text(
                               'Sign up',
                               style: AppTextStyles.linkText,
                             ),

@@ -78,7 +78,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         const SizedBox(height: 10),
                         const LogoWidget(),
                         const SizedBox(height: 30),
-                        const Text(
+                        Text(
                           'Forgot Password',
                           style: AppTextStyles.heading,
                         ),
@@ -92,7 +92,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                 size: 72,
                               ),
                               const SizedBox(height: 16),
-                              const Text(
+                              Text(
                                 'Reset Email Sent',
                                 style: AppTextStyles.subheading,
                               ),
@@ -151,7 +151,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                     onPressed: () {
                                       Navigator.pop(context);
                                     },
-                                    child: const Text(
+                                    child: Text(
                                       'Back to Login',
                                       style: AppTextStyles.linkText,
                                     ),
