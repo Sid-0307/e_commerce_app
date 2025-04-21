@@ -34,10 +34,15 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   late TextEditingController _descriptionController;
   late TextEditingController _minPriceController;
   late TextEditingController _maxPriceController;
-  late TextEditingController _paymentTermsController;
   late TextEditingController _dispatchPortController;
   late TextEditingController _transitTimeController;
   late TextEditingController _videoUrlController;
+
+  // New payment terms controllers and state
+  String _selectedPaymentTerm = '50% advance, 50% after delivery';
+  final List<String> _paymentTerms = ['50% advance, 50% after delivery', 'Other'];
+  bool _showCustomPaymentTermField = false;
+  late TextEditingController _customPaymentTermController;
 
   String _priceUnit = 'per kg';
   String _shippingTerm = 'FOB';
@@ -67,10 +72,10 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _descriptionController = TextEditingController(text: widget.product?.description ?? '');
     _minPriceController = TextEditingController(text: widget.product?.minPrice.toString() ?? '');
     _maxPriceController = TextEditingController(text: widget.product?.maxPrice.toString() ?? '');
-    _paymentTermsController = TextEditingController(text: widget.product?.paymentTerms ?? '');
     _dispatchPortController = TextEditingController(text: widget.product?.dispatchPort ?? '');
     _transitTimeController = TextEditingController(text: widget.product?.transitTime ?? '');
     _videoUrlController = TextEditingController(text: widget.product?.videoUrl ?? '');
+    _customPaymentTermController = TextEditingController();
 
     // Initialize dropdown values if editing
     if (widget.product != null) {
@@ -78,6 +83,18 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       _shippingTerm = widget.product!.shippingTerm ?? _shippingTerm;
       _countryOfOrigin = widget.product!.countryOfOrigin ?? _countryOfOrigin;
       _buyerInspection = widget.product!.buyerInspection ?? _buyerInspection;
+
+      // Check if payment term matches any preset option
+      if (widget.product!.paymentTerms != null) {
+        if (_paymentTerms.contains(widget.product!.paymentTerms)) {
+          _selectedPaymentTerm = widget.product!.paymentTerms!;
+          _showCustomPaymentTermField = false;
+        } else {
+          _selectedPaymentTerm = 'Other';
+          _showCustomPaymentTermField = true;
+          _customPaymentTermController.text = widget.product!.paymentTerms!;
+        }
+      }
 
       // Initialize images if any
       if (widget.product!.imageUrls != null) {
@@ -95,10 +112,10 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _descriptionController.dispose();
     _minPriceController.dispose();
     _maxPriceController.dispose();
-    _paymentTermsController.dispose();
     _dispatchPortController.dispose();
     _transitTimeController.dispose();
     _videoUrlController.dispose();
+    _customPaymentTermController.dispose();
     super.dispose();
   }
 
@@ -212,6 +229,12 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       List<String> imageUrls = await _uploadImages();
       String? testReportUrl = await _uploadTestReport();
 
+      // Determine payment terms value
+      String paymentTerms = _selectedPaymentTerm;
+      if (_selectedPaymentTerm == 'Other') {
+        paymentTerms = _customPaymentTermController.text;
+      }
+
       // Create or update product
       Product product = Product(
         id: widget.product?.id ?? _uuid.v4(),
@@ -222,7 +245,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         priceUnit: _priceUnit,
         shippingTerm: _shippingTerm,
         countryOfOrigin: _countryOfOrigin,
-        paymentTerms: _paymentTermsController.text,
+        paymentTerms: paymentTerms,
         dispatchPort: _dispatchPortController.text,
         transitTime: _transitTimeController.text,
         videoUrl: _videoUrlController.text,
@@ -257,6 +280,12 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   // Show an enhanced preview
   void _showPreview() {
     if (!_formKey.currentState!.validate()) return;
+
+    // Determine payment terms for preview
+    String paymentTerms = _selectedPaymentTerm;
+    if (_selectedPaymentTerm == 'Other') {
+      paymentTerms = _customPaymentTermController.text;
+    }
 
     showDialog(
       context: context,
@@ -352,7 +381,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                       const SizedBox(height: 4),
                       _buildDetailRow('Shipping Term', _shippingTerm),
                       _buildDetailRow('Country of Origin', _countryOfOrigin),
-                      _buildDetailRow('Payment Terms', _paymentTermsController.text),
+                      _buildDetailRow('Payment Terms', paymentTerms),
                       _buildDetailRow('Dispatch Port', _dispatchPortController.text),
                       _buildDetailRow('Transit Time', _transitTimeController.text),
                       _buildDetailRow('Buyer Inspection', _buyerInspection ? 'Yes' : 'No'),
@@ -693,13 +722,51 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Payment Terms
+              // Payment Terms - REPLACED with dropdown + optional text field
               Text('Payment Terms', style: AppTextStyles.subtitle),
               const SizedBox(height: 8),
-              CustomTextField(
-                controller: _paymentTermsController,
-                labelText: 'e.g., 50% advance, 50% after delivery',
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedPaymentTerm,
+                    isExpanded: true,
+                    items: _paymentTerms.map((String term) {
+                      return DropdownMenuItem<String>(
+                        value: term,
+                        child: Text(term),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          _selectedPaymentTerm = newValue;
+                          _showCustomPaymentTermField = (newValue == 'Other');
+                        });
+                      }
+                    },
+                  ),
+                ),
               ),
+
+              // Custom Payment Terms field (shown only when "Other" is selected)
+              if (_showCustomPaymentTermField) ...[
+                const SizedBox(height: 16),
+                CustomTextField(
+                  controller: _customPaymentTermController,
+                  labelText: 'Enter custom payment terms',
+                  validator: _selectedPaymentTerm == 'Other' ? (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter payment terms';
+                    }
+                    return null;
+                  } : null,
+                ),
+              ],
               const SizedBox(height: 24),
 
               // Dispatch Port

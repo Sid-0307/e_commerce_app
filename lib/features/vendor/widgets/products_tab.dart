@@ -1,7 +1,7 @@
-// lib/features/vendor/widgets/products_tab.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
 import '../../../core/providers/user_provider.dart';
@@ -9,44 +9,40 @@ import '../../../core/widgets/custom_button.dart';
 import '../models/product_model.dart';
 import '../screens/add_edit_product_screen.dart';
 
-class ProductsTab extends StatelessWidget {
+class ProductsTab extends StatefulWidget {
   const ProductsTab({Key? key}) : super(key: key);
 
   @override
+  State<ProductsTab> createState() => _ProductsTabState();
+}
+
+class _ProductsTabState extends State<ProductsTab> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  void _performSearch() {
+    setState(() {
+      _searchQuery = _searchController.text;
+    });
+  }
+
+  void _clearSearch() {
+    setState(() {
+      _searchController.clear();
+      _searchQuery = '';
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Mock data for products - this would come from your database in a real app
-    // For testing empty state, you can set this to an empty list
-    final List<Product> products = [
-      // Product(
-      //   name: 'T-shirt',
-      //   price: 20,
-      //   minPrice: 15,
-      //   maxPrice: 25,
-      //   description: 'Cotton T-shirt',
-      //   priceUnit: 'per piece',
-      //   shippingTerm: 'FOB',
-      //   countryOfOrigin: 'India',
-      //   paymentTerms: '100% advance payment',
-      //   dispatchPort: 'Mumbai Port',
-      //   iconData: Icons.accessibility,
-      // ),
-      // Product(
-      //   name: 'Laptop',
-      //   price: 999,
-      //   minPrice: 899,
-      //   maxPrice: 1099,
-      //   description: 'High-performance laptop',
-      //   priceUnit: 'per piece',
-      //   shippingTerm: 'CIF',
-      //   countryOfOrigin: 'China',
-      //   paymentTerms: '50% advance, 50% on delivery',
-      //   dispatchPort: 'Shanghai Port',
-      //   iconData: Icons.laptop,
-      // ),
-    ];
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final user = userProvider.currentUser;
-    print(user);
 
     return Scaffold(
       body: Padding(
@@ -58,12 +54,17 @@ class ProductsTab extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Products' ,
+                  'My Products',
                   style: AppTextStyles.heading1,
                 ),
                 IconButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, '/vendor/product/add');
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AddEditProductScreen(),
+                      ),
+                    );
                   },
                   icon: Container(
                     padding: const EdgeInsets.all(8),
@@ -82,9 +83,164 @@ class ProductsTab extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: products.isEmpty
-                  ? _buildEmptyState(context)
-                  : _buildProductsList(context, products),
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance.collection('products').snapshots(),
+                builder: (context, snapshot) {
+                  // Show loading indicator while waiting for data
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  // Handle errors
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error loading products: ${snapshot.error}',
+                        style: AppTextStyles.body,
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  }
+
+                  // No data available
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return _buildEmptyState(context);
+                  }
+
+                  // Convert to list of products
+                  List<Product> products = snapshot.data!.docs.map((doc) {
+                    return Product.fromFirestore(doc);
+                  }).toList();
+
+                  // Apply search filter
+                  if (_searchQuery.isNotEmpty) {
+                    products = products.where((product) =>
+                        product.name.toLowerCase().contains(_searchQuery.toLowerCase())
+                    ).toList();
+                  }
+
+                  // Display products with search
+                  return Column(
+                    children: [
+                      // Search bar with button
+                      // Search bar with improved design
+                      Container(
+                        decoration: BoxDecoration(
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            // Text field
+                            Expanded(
+                              child: Container(
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.horizontal(
+                                    left: const Radius.circular(12),
+                                    right: Radius.zero,
+                                  ),
+                                ),
+                                child: TextField(
+                                  controller: _searchController,
+                                  decoration: InputDecoration(
+                                    hintText: 'Search products...',
+                                    hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.7)),
+                                    suffixIcon: _searchController.text.isNotEmpty
+                                        ? IconButton(
+                                      onPressed: _clearSearch,
+                                      icon: Icon(
+                                        Icons.close,
+                                        size: 18,
+                                        color: AppColors.textSecondary.withOpacity(1),
+                                      ),
+                                      splashRadius: 20,
+                                    )
+                                        : IconButton(
+                                      onPressed: null,
+                                      icon: Icon(
+                                        Icons.close,
+                                        size: 18,
+                                        color: Colors.transparent,
+                                      ),
+                                      splashRadius: 20,
+                                    ),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                                    enabledBorder: InputBorder.none,
+                                    focusedBorder: InputBorder.none,
+                                  ),
+                                  onSubmitted: (_) => _performSearch(),
+                                  textInputAction: TextInputAction.search,
+                                  textAlignVertical: TextAlignVertical.center,
+                                ),
+                              ),
+                            ),
+
+                            // Search button
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: const BorderRadius.horizontal(
+                                  left: Radius.zero,
+                                  right: Radius.circular(12),
+                                ),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    AppColors.primary,
+                                    AppColors.primary.withOpacity(0.8),
+                                  ],
+                                ),
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: _performSearch,
+                                  borderRadius: const BorderRadius.horizontal(
+                                    left: Radius.zero,
+                                    right: Radius.circular(12),
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.search,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Results count
+                      Text(
+                        '${products.length} products found',
+                        style: AppTextStyles.caption,
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Product list
+                      Expanded(
+                        child: _buildProductsList(context, products),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -112,27 +268,58 @@ class ProductsTab extends StatelessWidget {
           CustomButton(
             text: 'Add Your First Product',
             onPressed: () {
-              Navigator.pushNamed(context, '/vendor/product/add');
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AddEditProductScreen(),
+                ),
+              );
             },
-            // buttonColor: AppColors.primary,
-            // textColor: Colors.white,
           ),
         ],
       ),
     );
   }
 
+  Future<void> _deleteProductFiles(Product product) async {
+    final storage = FirebaseStorage.instance;
+
+    // Delete image files
+    if (product.imageUrls != null && product.imageUrls!.isNotEmpty) {
+      for (final imageUrl in product.imageUrls!) {
+        try {
+          // Extract the file path from the URL
+          final ref = storage.refFromURL(imageUrl);
+          await ref.delete();
+        } catch (e) {
+          print('Error deleting image: $e');
+        }
+      }
+    }
+
+    // Delete PDF report if exists
+    if (product.testReportUrl != null && product.testReportUrl!.isNotEmpty) {
+      try {
+        final ref = storage.refFromURL(product.testReportUrl!);
+        await ref.delete();
+      } catch (e) {
+        print('Error deleting report: $e');
+      }
+    }
+  }
+
   Widget _buildProductsList(BuildContext context, List<Product> products) {
     return ListView.builder(
       itemCount: products.length,
       itemBuilder: (context, index) {
+        final product = products[index];
         return GestureDetector(
           onTap: () {
-            // Navigate to product detail or direct to edit screen
-            Navigator.pushNamed(
+            Navigator.push(
               context,
-              '/vendor/product/edit',
-              arguments: products[index],
+              MaterialPageRoute(
+                builder: (context) => AddEditProductScreen(product: product),
+              ),
             );
           },
           child: Container(
@@ -144,35 +331,144 @@ class ProductsTab extends StatelessWidget {
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
                   blurRadius: 5,
+                  spreadRadius: 1,
                 ),
               ],
             ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              leading: Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                // child: Icon(products[index].iconData, size: 30),
-              ),
-              title: Text(
-                products[index].name,
-                style: AppTextStyles.bodyLarge,
-              ),
-              subtitle: Text(
-                '${products[index].shippingTerm} • ${products[index].countryOfOrigin}',
-                style: AppTextStyles.caption,
-              ),
-              trailing: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '\$${products[index].minPrice} - \$${products[index].maxPrice}',
-                    style: AppTextStyles.caption,
+                  // Product Image
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: product.imageUrls != null && product.imageUrls!.isNotEmpty
+                        ? Image.network(
+                      product.imageUrls![0],
+                      width: 110,
+                      height: 110,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 100,
+                        height: 100,
+                        color: AppColors.border,
+                        child: const Icon(Icons.image_not_supported, color: AppColors.textSecondary),
+                      ),
+                    )
+                        : Container(
+                      width: 100,
+                      height: 100,
+                      color: AppColors.border,
+                      child: const Icon(Icons.image, color: AppColors.textSecondary),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Product details
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.name,
+                          style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          product.description,
+                          style: AppTextStyles.body,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '\$${product.minPrice} - \$${product.maxPrice} ${product.priceUnit}',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '• ${product.shippingTerm} • ${product.countryOfOrigin}',
+                          style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Delete icon
+                  GestureDetector(
+                    onTap: () {
+                      // Show confirmation dialog
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Delete Product'),
+                          content: Text('Are you sure you want to delete "${product.name}"?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () async {
+                                // Delete the product files first
+                                await _deleteProductFiles(product);
+
+                                // Then delete the product document
+                                try {
+                                  await FirebaseFirestore.instance
+                                      .collection('products')
+                                      .doc(product.id)
+                                      .delete();
+
+                                  Navigator.pop(context);
+
+                                  // Show success message
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Product deleted successfully')),
+                                  );
+                                } catch (e) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Error deleting product: $e')),
+                                  );
+                                }
+                              },
+                              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child: Container(
+                      height: 30,
+                      width: 30,
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.delete_outline,
+                        size: 16,
+                        color: Colors.red,
+                      ),
+                    ),
                   ),
                 ],
               ),
