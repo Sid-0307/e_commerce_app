@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'package:e_commerce_app/core/providers/user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as path;
 import '../../../core/constants/colors.dart';
@@ -119,6 +121,28 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     super.dispose();
   }
 
+  // Function to validate min and max price
+  bool _validatePrices() {
+    if (_minPriceController.text.isEmpty || _maxPriceController.text.isEmpty) {
+      return false;
+    }
+
+    double minPrice = double.tryParse(_minPriceController.text) ?? 0;
+    double maxPrice = double.tryParse(_maxPriceController.text) ?? 0;
+
+    if (minPrice > maxPrice) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: Minimum price cannot be greater than maximum price'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return false;
+    }
+
+    return true;
+  }
+
   Future<void> requestPermission() async {
     if (await Permission.photos.isDenied) {
       await Permission.photos.request();
@@ -219,7 +243,15 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   }
 
   // Save product to Firestore
-  Future<void> _saveProduct() async {
+  Future<void> _saveProduct(BuildContext context) async {
+    // Store a mounted flag to check if widget is still mounted before using context
+    final bool isMounted = mounted;
+
+    // Validate the form and check min/max price relationship
+    if (!_formKey.currentState!.validate() || !_validatePrices()) {
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -235,9 +267,14 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         paymentTerms = _customPaymentTermController.text;
       }
 
+      // Get user email safely
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final userEmail = userProvider.currentUser?.email ?? '';
+
       // Create or update product
       Product product = Product(
         id: widget.product?.id ?? _uuid.v4(),
+        email: userEmail,
         name: _titleController.text,
         description: _descriptionController.text,
         minPrice: double.parse(_minPriceController.text),
@@ -259,27 +296,36 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       // Save to Firestore
       await _firestore.collection('products').doc(product.id).set(product.toMap());
 
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(widget.product != null ? 'Product updated successfully' : 'Product added successfully')),
-      );
-
-      Navigator.pop(context);
+      // Only show success message if widget is still mounted
+      if (isMounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(widget.product != null ? 'Product updated successfully' : 'Product added successfully')),
+        );
+        Navigator.pop(context);
+      }
     } catch (e) {
       print('Error saving product: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to save product')),
-      );
+      // Only show error message if widget is still mounted
+      if (isMounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to save product')),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      // Only update state if widget is still mounted
+      if (isMounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
-
   // Show an enhanced preview
   void _showPreview() {
-    if (!_formKey.currentState!.validate()) return;
+    // Validate the form and check min/max price relationship
+    if (!_formKey.currentState!.validate() || !_validatePrices()) {
+      return;
+    }
 
     // Determine payment terms for preview
     String paymentTerms = _selectedPaymentTerm;
@@ -420,7 +466,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                     ElevatedButton(
                       onPressed: () {
                         Navigator.pop(context);
-                        _saveProduct();
+                        _saveProduct(context);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
@@ -466,432 +512,452 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     final isEditing = widget.product != null;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditing ? 'Edit Product' : 'Add New Product'),
-        elevation: 0,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+        appBar: AppBar(
+          title: Text(isEditing ? 'Edit Product' : 'Add New Product'),
+          elevation: 0,
+        ),
+        body: _isLoading
+            ? Center(child: Container(
+          color: Colors.white.withOpacity(0.7),
+          width: double.infinity,
+          height: double.infinity,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Title
-              Text('Product Title', style: AppTextStyles.subtitle),
-              const SizedBox(height: 8),
-              CustomTextField(
-                controller: _titleController,
-                labelText: 'Enter product title',
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a title';
-                  }
-                  return null;
-                },
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(!isEditing?"Adding product...":"Updating product...",
+                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 24),
+            ],
+          ),
+        ))
+            : Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                    // Title
+                    Text('Product Title', style: AppTextStyles.subtitle),
+                const SizedBox(height: 8),
+                CustomTextField(
+                  controller: _titleController,
+                  labelText: 'Enter product title',
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a title';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
 
-              // Description
-              Text('Description', style: AppTextStyles.subtitle),
-              const SizedBox(height: 8),
-              CustomTextField(
-                controller: _descriptionController,
-                labelText: 'Enter product description',
-                // maxLines: 4,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a description';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
+                // Description
+                Text('Description', style: AppTextStyles.subtitle),
+                const SizedBox(height: 8),
+                CustomTextField(
+                  controller: _descriptionController,
+                  labelText: 'Enter product description',
+                  // maxLines: 4,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a description';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
 
-              // Images
-              Text('Product Images (Max 3)', style: AppTextStyles.subtitle),
-              const SizedBox(height: 8),
-              Container(
-                height: 100,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    // Display selected images
-                    for (var i = 0; i < _selectedImages.length; i++)
-                      Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: AppColors.border),
-                          borderRadius: BorderRadius.circular(8),
-                          image: DecorationImage(
-                            image: _selectedImages[i] is File
-                                ? FileImage(_selectedImages[i] as File) as ImageProvider
-                                : NetworkImage(_selectedImages[i].toString()),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        child: Stack(
-                          alignment: Alignment.topRight,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.close, color: Colors.red),
-                              onPressed: () {
-                                setState(() {
-                                  _selectedImages.removeAt(i);
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-
-                    // Add image button
-                    if (_selectedImages.length < 3)
-                      GestureDetector(
-                        onTap: _pickImages,
-                        child: Container(
+                // Images
+                Text('Product Images (Max 3)', style: AppTextStyles.subtitle),
+                const SizedBox(height: 8),
+                Container(
+                  height: 100,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      // Display selected images
+                      for (var i = 0; i < _selectedImages.length; i++)
+                        Container(
+                          margin: const EdgeInsets.only(right: 8),
                           width: 100,
                           height: 100,
                           decoration: BoxDecoration(
                             border: Border.all(color: AppColors.border),
                             borderRadius: BorderRadius.circular(8),
+                            image: DecorationImage(
+                              image: _selectedImages[i] is File
+                                  ? FileImage(_selectedImages[i] as File) as ImageProvider
+                                  : NetworkImage(_selectedImages[i].toString()),
+                              fit: BoxFit.cover,
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.add_photo_alternate,
-                            size: 40,
-                            color: AppColors.primary,
+                          child: Stack(
+                            alignment: Alignment.topRight,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.close, color: Colors.red),
+                                onPressed: () {
+                                  setState(() {
+                                    _selectedImages.removeAt(i);
+                                  });
+                                },
+                              ),
+                            ],
                           ),
                         ),
+
+                      // Add image button
+                      if (_selectedImages.length < 3)
+                        GestureDetector(
+                          onTap: _pickImages,
+                          child: Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: AppColors.border),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.add_photo_alternate,
+                              size: 40,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Video URL
+                Text('Video URL (Optional)', style: AppTextStyles.subtitle),
+                const SizedBox(height: 8),
+                CustomTextField(
+                  controller: _videoUrlController,
+                  labelText: 'Enter video URL',
+                ),
+                const SizedBox(height: 24),
+
+                // Price Range
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Min Price (\$)', style: AppTextStyles.subtitle),
+                          const SizedBox(height: 8),
+                          CustomTextField(
+                            controller: _minPriceController,
+                            labelText: 'Min',
+                            keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Required';
+                              }
+                              // Check if it's a valid number
+                              if (double.tryParse(value) == null) {
+                                return 'Invalid number';
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
                       ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Max Price (\$)', style: AppTextStyles.subtitle),
+                          const SizedBox(height: 8),
+                          CustomTextField(
+                            controller: _maxPriceController,
+                            labelText: 'Max',
+                            keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Required';
+                              }
+                              // Check if it's a valid number
+                              if (double.tryParse(value) == null) {
+                                return 'Invalid number';
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // Video URL
-              Text('Video URL (Optional)', style: AppTextStyles.subtitle),
-              const SizedBox(height: 8),
-              CustomTextField(
-                controller: _videoUrlController,
-                labelText: 'Enter video URL',
-              ),
-              const SizedBox(height: 24),
-
-              // Price Range
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Min Price (\$)', style: AppTextStyles.subtitle),
-                        const SizedBox(height: 8),
-                        CustomTextField(
-                          controller: _minPriceController,
-                          labelText: 'Min',
-                          keyboardType: TextInputType.number,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Required';
-                            }
-                            return null;
-                          },
-                        ),
-                      ],
-                    ),
+                // Price Unit
+                Text('Price Unit', style: AppTextStyles.subtitle),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Max Price (\$)', style: AppTextStyles.subtitle),
-                        const SizedBox(height: 8),
-                        CustomTextField(
-                          controller: _maxPriceController,
-                          labelText: 'Max',
-                          keyboardType: TextInputType.number,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Required';
-                            }
-                            return null;
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // Price Unit
-              Text('Price Unit', style: AppTextStyles.subtitle),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _priceUnit,
-                    isExpanded: true,
-                    items: _priceUnits.map((String unit) {
-                      return DropdownMenuItem<String>(
-                        value: unit,
-                        child: Text(unit),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      if (newValue != null) {
-                        setState(() {
-                          _priceUnit = newValue;
-                        });
-                      }
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Shipping Term
-              Text('Shipping Term', style: AppTextStyles.subtitle),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _shippingTerm,
-                    isExpanded: true,
-                    items: _shippingTerms.map((String term) {
-                      return DropdownMenuItem<String>(
-                        value: term,
-                        child: Text(term),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      if (newValue != null) {
-                        setState(() {
-                          _shippingTerm = newValue;
-                        });
-                      }
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Country of Origin
-              Text('Country of Origin', style: AppTextStyles.subtitle),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _countryOfOrigin,
-                    isExpanded: true,
-                    items: _countries.map((String country) {
-                      return DropdownMenuItem<String>(
-                        value: country,
-                        child: Text(country),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      if (newValue != null) {
-                        setState(() {
-                          _countryOfOrigin = newValue;
-                        });
-                      }
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Payment Terms - REPLACED with dropdown + optional text field
-              Text('Payment Terms', style: AppTextStyles.subtitle),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedPaymentTerm,
-                    isExpanded: true,
-                    items: _paymentTerms.map((String term) {
-                      return DropdownMenuItem<String>(
-                        value: term,
-                        child: Text(term),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      if (newValue != null) {
-                        setState(() {
-                          _selectedPaymentTerm = newValue;
-                          _showCustomPaymentTermField = (newValue == 'Other');
-                        });
-                      }
-                    },
-                  ),
-                ),
-              ),
-
-              // Custom Payment Terms field (shown only when "Other" is selected)
-              if (_showCustomPaymentTermField) ...[
-                const SizedBox(height: 16),
-                CustomTextField(
-                  controller: _customPaymentTermController,
-                  labelText: 'Enter custom payment terms',
-                  validator: _selectedPaymentTerm == 'Other' ? (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter payment terms';
-                    }
-                    return null;
-                  } : null,
-                ),
-              ],
-              const SizedBox(height: 24),
-
-              // Dispatch Port
-              Text('Dispatch Port', style: AppTextStyles.subtitle),
-              const SizedBox(height: 8),
-              CustomTextField(
-                controller: _dispatchPortController,
-                labelText: 'Enter port name',
-              ),
-              const SizedBox(height: 24),
-
-              // Test Report
-              Text('Fresh Test Report (PDF)', style: AppTextStyles.subtitle),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppColors.border),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        _selectedTestReportFile != null
-                            ? path.basename(_selectedTestReportFile!.path)
-                            : _selectedTestReportUrl != null
-                            ? 'Test Report PDF (Already uploaded)'
-                            : 'No file selected',
-                        style: (_selectedTestReportFile == null && _selectedTestReportUrl == null)
-                            ? AppTextStyles.body.copyWith(color: AppColors.textSecondary)
-                            : AppTextStyles.body,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: _pickTestReport,
-                    icon: const Icon(Icons.upload_file, color: AppColors.primary),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // Transit Time
-              Text('Transit Time (Optional)', style: AppTextStyles.subtitle),
-              const SizedBox(height: 8),
-              CustomTextField(
-                controller: _transitTimeController,
-                labelText: 'e.g., 15-20 days',
-              ),
-              const SizedBox(height: 24),
-
-              // Buyer Inspection
-              Text('Buyer Inspection', style: AppTextStyles.subtitle),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: RadioListTile<bool>(
-                      title: const Text('Yes'),
-                      value: true,
-                      groupValue: _buyerInspection,
-                      onChanged: (bool? value) {
-                        if (value != null) {
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _priceUnit,
+                      isExpanded: true,
+                      items: _priceUnits.map((String unit) {
+                        return DropdownMenuItem<String>(
+                          value: unit,
+                          child: Text(unit),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
                           setState(() {
-                            _buyerInspection = value;
+                            _priceUnit = newValue;
                           });
                         }
                       },
                     ),
                   ),
-                  Expanded(
-                    child: RadioListTile<bool>(
-                      title: const Text('No'),
-                      value: false,
-                      groupValue: _buyerInspection,
-                      onChanged: (bool? value) {
-                        if (value != null) {
+                ),
+                const SizedBox(height: 24),
+
+                // Shipping Term
+                Text('Shipping Term', style: AppTextStyles.subtitle),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _shippingTerm,
+                      isExpanded: true,
+                      items: _shippingTerms.map((String term) {
+                        return DropdownMenuItem<String>(
+                          value: term,
+                          child: Text(term),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
                           setState(() {
-                            _buyerInspection = value;
+                            _shippingTerm = newValue;
                           });
                         }
                       },
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 32),
+                ),
+                const SizedBox(height: 24),
 
-              // Preview and Save buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: CustomButton(
-                      text: 'Preview',
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          _showPreview();
+                // Country of Origin
+                Text('Country of Origin', style: AppTextStyles.subtitle),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _countryOfOrigin,
+                      isExpanded: true,
+                      items: _countries.map((String country) {
+                        return DropdownMenuItem<String>(
+                          value: country,
+                          child: Text(country),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            _countryOfOrigin = newValue;
+                          });
                         }
                       },
-                      // buttonColor: Colors.grey.shade200,
-                      // textColor: AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: CustomButton(
-                      text: isEditing ? 'Update' : 'Save',
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          _saveProduct();
+                ),
+                const SizedBox(height: 24),
+
+                // Payment Terms - REPLACED with dropdown + optional text field
+                Text('Payment Terms', style: AppTextStyles.subtitle),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedPaymentTerm,
+                      isExpanded: true,
+                      items: _paymentTerms.map((String term) {
+                        return DropdownMenuItem<String>(
+                          value: term,
+                          child: Text(term),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            _selectedPaymentTerm = newValue;
+                            _showCustomPaymentTermField = (newValue == 'Other');
+                          });
                         }
                       },
-                      // buttonColor: AppColors.primary,
-                      // textColor: Colors.white,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
+                ),
+
+                // Custom Payment Terms field (shown only when "Other" is selected)
+                if (_showCustomPaymentTermField) ...[
+            const SizedBox(height: 16),
+        CustomTextField(
+          controller: _customPaymentTermController,
+          labelText: 'Enter custom payment terms',
+          validator: _selectedPaymentTerm == 'Other' ? (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please enter payment terms';
+            }
+            return null;
+          } : null,
         ),
-      ),
-    );
+        ],
+        const SizedBox(height: 24),
+        // Dispatch Port
+        Text('Dispatch Port', style: AppTextStyles.subtitle),
+        const SizedBox(height: 8),
+        CustomTextField(
+          controller: _dispatchPortController,
+          labelText: 'Enter port name',
+        ),
+        const SizedBox(height: 24),
+        // Test Report
+        Text('Fresh Test Report (PDF)', style: AppTextStyles.subtitle),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _selectedTestReportFile != null
+                  ? path.basename(_selectedTestReportFile!.path)
+                      : _selectedTestReportUrl != null
+                  ? 'Test Report PDF (Already uploaded)'
+                      : 'No file selected',
+                  style: (_selectedTestReportFile == null && _selectedTestReportUrl == null)
+                  ? AppTextStyles.body.copyWith(color: AppColors.textSecondary)
+                      : AppTextStyles.body,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: _pickTestReport,
+              icon: const Icon(Icons.upload_file, color: AppColors.primary),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+
+        // Transit Time
+        Text('Transit Time (Optional)', style: AppTextStyles.subtitle),
+        const SizedBox(height: 8),
+        CustomTextField(
+          controller: _transitTimeController,
+          labelText: 'e.g., 15-20 days',
+        ),
+        const SizedBox(height: 24),
+
+        // Buyer Inspection
+        Text('Buyer Inspection', style: AppTextStyles.subtitle),
+        const SizedBox(height: 8),
+        Row(
+        children: [
+        Expanded(
+        child: RadioListTile<bool>(
+        title: const Text('Yes'),
+        value: true,
+        groupValue: _buyerInspection,
+        onChanged: (bool? value) {
+        if (value != null) {
+        setState(() {
+        _buyerInspection = value;
+        });
+        }
+        },
+        ),
+        ),
+        Expanded(
+        child: RadioListTile<bool>(
+        title: const Text('No'),
+        value: false,
+        groupValue: _buyerInspection,
+        onChanged: (bool? value) {
+        if (value != null) {
+        setState(() {
+        _buyerInspection = value;
+        });
+        }
+        },
+        ),
+        ),
+        ],
+        ),
+        const SizedBox(height: 32),
+
+        // Preview and Save buttons
+        Row(
+        children: [
+        Expanded(
+        child: CustomButton(
+        text: 'Preview',
+          onPressed: () {
+            if (_formKey.currentState!.validate()) {
+              _showPreview();
+            }
+          },
+          // buttonColor: Colors.grey.shade200,
+          // textColor: AppColors.textPrimary,
+        ),
+        ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: CustomButton(
+              text: isEditing ? 'Update' : 'Save',
+              onPressed: () {
+                if (_formKey.currentState!.validate()) {
+                  _saveProduct(context);
+                }
+              },
+              // buttonColor: AppColors.primary,
+              // textColor: Colors.white,
+            ),
+          ),
+        ],
+        ),
+                          const SizedBox(height: 24),
+                        ],
+                    ),
+                ),
+            ),
+        );
   }
 }

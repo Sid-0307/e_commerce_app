@@ -6,9 +6,11 @@ import 'package:provider/provider.dart';
 import '../../../core/background_decorations.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
+import '../../../core/models/user_model.dart';
 import '../../../core/providers/user_provider.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
+import '../../buyer/screens/buyer_home_screen.dart';
 import '../widgets/auth_card.dart';
 import '../widgets/logo_widget.dart';
 import 'email_verification_screen.dart';
@@ -43,29 +45,39 @@ class _LoginScreenState extends State<LoginScreen> {
         _isLoading = true;
       });
       try {
-        User? user =  await _authService.signIn(
+        UserModel? user = await _authService.signIn(
           _emailController.text.trim(),
           _passwordController.text.trim(),
         );
 
-        if (user!= null) {
+        if (user != null) {
           await Provider.of<UserProvider>(context, listen: false)
               .setCurrentUser(user);
         }
 
-        // Navigate to home screen or handle successful login
-        if (user!=null && mounted) {
+        // Navigate based on user type
+        if (user != null && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Login successful')),
           );
           Future.delayed(const Duration(seconds: 1), () {
             if (mounted) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const VendorHomeScreen(),
-                ),
-              );
+              // Check user type and redirect accordingly
+              if (user.userType == 'seller') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const VendorHomeScreen(),
+                  ),
+                );
+              } else if (user.userType == 'buyer') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const BuyerHomeScreen(),
+                  ),
+                );
+              }
             }
           });
         }
@@ -91,7 +103,6 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     }
   }
-
   void _showVerificationDialog() {
     FocusScope.of(context).unfocus();
     ScaffoldMessenger.of(context).showSnackBar(

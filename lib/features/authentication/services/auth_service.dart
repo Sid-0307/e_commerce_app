@@ -1,12 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/models/user_model.dart';
+
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Sign in with email and password
-  Future<User?> signIn(String email, String password) async {
+  Future<UserModel?> signIn(String email, String password) async {
     try {
       final userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
@@ -15,17 +17,27 @@ class AuthService {
 
       final user = userCredential.user;
 
-      if (user != null && !user.emailVerified) {
-        await _auth.signOut();
+      if (user == null) {
+        return null;
+      }
+
+      // Check if email is verified
+      if (!user.emailVerified) {
         throw Exception('Please verify your email before logging in');
       }
 
-      return user;
+      // Fetch user data from Firestore to get userType and other fields
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+
+      if (userDoc.exists) {
+        return UserModel.fromMap(userDoc.data()!, user.uid);
+      }
+
+      return null;
     } catch (e) {
       rethrow;
     }
   }
-
   Future<User?> signUp(
       String email,
       String password,

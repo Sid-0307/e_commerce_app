@@ -1,4 +1,7 @@
+import 'package:drop_down_search_field/drop_down_search_field.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
+import 'package:intl_phone_field/intl_phone_field.dart';
 import '../../../core/background_decorations.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
@@ -23,17 +26,14 @@ class _SignupScreenState extends State<SignupScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _phoneController = TextEditingController();
+  String _phoneController='';
   final _authService = AuthService();
-  String _finalPhoneController = '';
-  bool _isLoading = false;
-  String _userType = 'buyer'; // Default type
-  String _countryCode = '+91'; // Default country code (IND)
+  String? _phoneError = null;
 
-  final List<String> _userTypes = ['buyer', 'seller']; // Define the list of user types
-  final List<String> _countryCodes = [
-    '+1', '+44', '+91', '+81', '+86', '+61', '+49', '+33', '+7', '+55'
-  ]; // Common country codes
+  bool _isLoading = false;
+  String _userType = 'Buyer'; // Default type// Default country code (IND)
+
+  final List<String> _userTypes = ['Buyer', 'Seller']; // Define the list of user types// Common country codes
 
   @override
   void dispose() {
@@ -41,7 +41,6 @@ class _SignupScreenState extends State<SignupScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _phoneController.dispose();
     super.dispose();
   }
 
@@ -51,20 +50,20 @@ class _SignupScreenState extends State<SignupScreen> {
         _isLoading = true;
       });
       try {
-        // Combine country code with phone number
-        _finalPhoneController = '$_countryCode${_phoneController.text.trim()}';
-
+        if (_phoneController.length <= 5) {
+          setState(() {
+            _phoneError = 'Please enter your phone number';
+          });
+          return ;
+        }
         // Sign up the user
         final user = await _authService.signUp(
           _emailController.text.trim(),
           _passwordController.text.trim(),
           _nameController.text.trim(),
           _userType,
-          _finalPhoneController,
+          _phoneController,
         );
-
-        print("sIGNUP DONE");
-        print(user);
 
         // Send email verification
         if (mounted) {
@@ -155,68 +154,48 @@ class _SignupScreenState extends State<SignupScreen> {
                                 },
                               ),
                               const SizedBox(height: 16),
-                              // Phone number field with country code
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                
-                                children: [
-                                  // Country code dropdown
-                                  Container(
-                                    width:80,
-                                    height: 56,
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(8),
-                                      color: AppColors.tertiary.withOpacity(0.15),
-                                      border: Border.all(
-                                        color: AppColors.primary.withOpacity(0.2),
-                                        width: 0.5,
-                                      ),
-                                    ),
-                                    child: Center(
-                                      child: DropdownButton<String>(
-                                        value: _countryCode,
-                                        isExpanded: true,
-                                        underline: Container(),
-                                        onChanged: (String? newValue) {
-                                          if (newValue != null) {
-                                            setState(() {
-                                              _countryCode = newValue;
-                                            });
-                                          }
-                                        },
-                                        items: _countryCodes.map<DropdownMenuItem<String>>((String value) {
-                                          return DropdownMenuItem<String>(
-                                            value: value,
-                                            child: Text(value),
-                                          );
-                                        }).toList(),
-                                      ),
-                                    ),
+                              IntlPhoneField(
+                                decoration: InputDecoration(
+                                  labelText: 'Phone Number',
+                                  labelStyle: TextStyle(
+                                    color: AppColors.black.withOpacity(0.6),
                                   ),
-                                  const SizedBox(width: 8),
-                                  // Phone number input
-                                  Expanded(
-                                    child: CustomTextField(
-                                      controller: _phoneController,
-                                      labelText: "Phone number",
-                                      keyboardType: TextInputType.phone,
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return 'Please enter your phone number';
-                                        }
-                                        if (value.length != 10) {
-                                          return 'Phone number must be 10 digits';
-                                        }
-                                        if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                                          return 'Only digits are allowed';
-                                        }
-                                        return null;
-                                      },
-                                    ),
+                                  floatingLabelBehavior: FloatingLabelBehavior.auto,
+                                  filled: true,
+                                  fillColor: AppColors.tertiary.withOpacity(0.15),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    // borderSide: BorderSide.none,
                                   ),
-                                ],
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(color: AppColors.primary.withOpacity(0.2), width: 0.5),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(color: AppColors.primary.withOpacity(0.6), width: 1.5),
+                                  ),
+                                  errorBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: const BorderSide(color: Colors.red, width: 1.0),
+                                  ),
+                                  floatingLabelStyle: TextStyle(
+                                    color: AppColors.primary.withOpacity(0.6),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  counterText: '',
+                                  errorText: _phoneError,
+                                ),
+                                initialCountryCode: 'IN',
+                                onChanged: (phone) {
+                                  _phoneController=phone.completeNumber;
+                                  setState(() {
+                                    _phoneError = null;
+                                  });
+                                },
                               ),
+
                               const SizedBox(height: 16),
                               CustomTextField(
                                 labelText: 'Password',
@@ -233,31 +212,86 @@ class _SignupScreenState extends State<SignupScreen> {
                                 },
                               ),
                               const SizedBox(height: 16),
-                              Text('Account Type', style: AppTextStyles.subheading),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
-                                decoration: BoxDecoration(
-                                  color: AppColors.inputBackground.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(8),
+                              // Container(
+                              //   padding: const EdgeInsets.symmetric(horizontal: 12),
+                              //   decoration: BoxDecoration(
+                              //     color: AppColors.inputBackground.withOpacity(0.15),
+                              //     borderRadius: BorderRadius.circular(8),
+                              //   ),
+                              //   child: DropdownButton<String>(
+                              //     value: _userType,
+                              //     isExpanded: true,
+                              //     underline: Container(),
+                              //     onChanged: (String? newValue) {
+                              //       if (newValue != null) {
+                              //         setState(() {
+                              //           _userType = newValue;
+                              //         });
+                              //       }
+                              //     },
+                              //     items: _userTypes.map<DropdownMenuItem<String>>((String value) {
+                              //       return DropdownMenuItem<String>(
+                              //         value: value,
+                              //         child: Text(value.substring(0, 1).toUpperCase() + value.substring(1)),
+                              //       );
+                              //     }).toList(),
+                              //   ),
+                              // ),
+                              DropdownButtonFormField2<String>(
+                                isExpanded: true,
+                                value: _userType,
+                                decoration: InputDecoration(
+                                  labelText: '  Account Type',
+                                  labelStyle: TextStyle(
+                                    color: AppColors.black.withOpacity(0.6),
+                                  ),
+                                  floatingLabelBehavior: FloatingLabelBehavior.auto,
+                                  filled: true,
+                                  fillColor: AppColors.tertiary.withOpacity(0.15),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(color: AppColors.primary.withOpacity(0.2), width: 0.5),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(color: AppColors.primary.withOpacity(0.6), width: 1.5),
+                                  ),
+                                  errorBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: const BorderSide(color: Colors.red, width: 1.0),
+                                  ),
+                                  floatingLabelStyle: TextStyle(
+                                    color: AppColors.primary.withOpacity(0.6),
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                                child: DropdownButton<String>(
-                                  value: _userType,
-                                  isExpanded: true,
-                                  underline: Container(),
-                                  onChanged: (String? newValue) {
-                                    if (newValue != null) {
-                                      setState(() {
-                                        _userType = newValue;
-                                      });
-                                    }
-                                  },
-                                  items: _userTypes.map<DropdownMenuItem<String>>((String value) {
-                                    return DropdownMenuItem<String>(
-                                      value: value,
-                                      child: Text(value.substring(0, 1).toUpperCase() + value.substring(1)),
-                                    );
-                                  }).toList(),
+                                items: _userTypes
+                                    .map((role) => DropdownMenuItem<String>(
+                                  value: role,
+                                  child: Text(role),
+                                ))
+                                    .toList(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _userType = value!;
+                                  });
+                                  print('Selected role: $value');
+                                },
+                                dropdownStyleData: DropdownStyleData(
+                                  elevation: 4,
+                                  decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: AppColors.lightTertiary, // Same as your field background
+                                  border: Border.all(
+                                    color: AppColors.primary.withOpacity(0.2),
+                                    width: 0.5,
+                                  ),
+                                ),
                                 ),
                               ),
                               const SizedBox(height: 20),

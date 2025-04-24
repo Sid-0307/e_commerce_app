@@ -84,7 +84,7 @@ class _ProductsTabState extends State<ProductsTab> {
             const SizedBox(height: 16),
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance.collection('products').snapshots(),
+                stream: FirebaseFirestore.instance.collection('products').where('email', isEqualTo: user!.email).snapshots(),
                 builder: (context, snapshot) {
                   // Show loading indicator while waiting for data
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -346,19 +346,19 @@ class _ProductsTabState extends State<ProductsTab> {
                     child: product.imageUrls != null && product.imageUrls!.isNotEmpty
                         ? Image.network(
                       product.imageUrls![0],
-                      width: 110,
-                      height: 110,
+                      width: 115,
+                      height: 115,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => Container(
-                        width: 100,
-                        height: 100,
+                        width: 115,
+                        height: 115,
                         color: AppColors.border,
                         child: const Icon(Icons.image_not_supported, color: AppColors.textSecondary),
                       ),
                     )
                         : Container(
-                      width: 100,
-                      height: 100,
+                      width: 115,
+                      height: 115,
                       color: AppColors.border,
                       child: const Icon(Icons.image, color: AppColors.textSecondary),
                     ),

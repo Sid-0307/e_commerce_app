@@ -1,23 +1,23 @@
+// lib/features/buyer/tabs/profile_tab.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
-import '../../../core/models/user_model.dart';
 import '../../../core/providers/user_provider.dart';
 import '../../../core/services/firestore_service.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-// import '../../../core/models/user_model.dart'; // Import UserModel
+import '../../../core/models/user_model.dart'; // Import UserModel
 
-class ProfileTab extends StatefulWidget {
-  const ProfileTab({Key? key}) : super(key: key);
+class BuyerProfileTab extends StatefulWidget {
+  const BuyerProfileTab({Key? key}) : super(key: key);
 
   @override
-  State<ProfileTab> createState() => _ProfileTabState();
+  State<BuyerProfileTab> createState() => _BuyerProfileTabState();
 }
 
-class _ProfileTabState extends State<ProfileTab> {
+class _BuyerProfileTabState extends State<BuyerProfileTab> {
   bool _isEditing = false;
   bool _isLoading = false;
 
@@ -43,14 +43,14 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   void _initControllers() {
-    final user = Provider.of<UserProvider>(context, listen: false).currentUser;
+    final UserModel? userModel = Provider.of<UserProvider>(context, listen: false).currentUser;
 
-    _nameController = TextEditingController(text: user?.name ?? '');
+    _nameController = TextEditingController(text: userModel?.name ?? '');
 
     // Parse phone number to separate country code and number if exists
-    if (user?.phoneNumber != null && user!.phoneNumber.isNotEmpty) {
+    if (userModel?.phoneNumber != null && userModel!.phoneNumber.isNotEmpty) {
       // Check if the phone number already contains a country code
-      String phoneNumber = user.phoneNumber;
+      String phoneNumber = userModel.phoneNumber;
       // Find the country code from the phone number
       String countryCode = _countryCodes.firstWhere(
             (code) => phoneNumber.startsWith(code),
@@ -68,7 +68,7 @@ class _ProfileTabState extends State<ProfileTab> {
       _phoneController = TextEditingController();
     }
 
-    _addressController = TextEditingController(text: user?.address ?? '');
+    _addressController = TextEditingController(text: userModel?.address ?? '');
   }
 
   @override
@@ -115,9 +115,9 @@ class _ProfileTabState extends State<ProfileTab> {
 
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
-      final user = userProvider.currentUser;
+      final UserModel? userModel = userProvider.currentUser;
 
-      if (user == null) {
+      if (userModel == null) {
         throw Exception('User not found');
       }
 
@@ -132,7 +132,7 @@ class _ProfileTabState extends State<ProfileTab> {
       };
 
       // Update in Firestore
-      await _firestoreService.updateUserData(user.uid, updatedData);
+      await _firestoreService.updateUserData(userModel.uid, updatedData);
 
       // Update Firebase Auth display name if changed
       final currentUser = FirebaseAuth.instance.currentUser;
@@ -140,15 +140,15 @@ class _ProfileTabState extends State<ProfileTab> {
         await currentUser.updateDisplayName(_nameController.text.trim());
       }
 
-      // Create updated UserModel using copyWith
-      final updatedUser = user.copyWith(
+      // Create updated UserModel
+      final updatedUserModel = userModel.copyWith(
         name: _nameController.text.trim(),
         phoneNumber: fullPhoneNumber,
         address: _addressController.text.trim(),
       );
 
-      // Update the UserProvider with the updated UserModel
-      userProvider.updateLocalUserData(updatedUser);
+      // Refresh user data in the provider
+      userProvider.updateLocalUserData(updatedUserModel);
 
       // Switch back to viewing mode
       setState(() {
@@ -171,7 +171,7 @@ class _ProfileTabState extends State<ProfileTab> {
     }
   }
 
-  Widget _buildProfileForm(UserModel? user) {
+  Widget _buildProfileForm(UserModel? userModel) {
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -196,6 +196,44 @@ class _ProfileTabState extends State<ProfileTab> {
               ),
               const SizedBox(height: 24),
 
+              // Avatar and name row
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 32,
+                    backgroundColor: AppColors.primary.withOpacity(0.2),
+                    child: Text(
+                      userModel?.name?.isNotEmpty == true
+                          ? userModel!.name.substring(0, 1).toUpperCase()
+                          : '?',
+                      style: AppTextStyles.heading1.copyWith(
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        userModel?.name ?? 'Buyer',
+                        style: AppTextStyles.heading1,
+                      ),
+                      Text(
+                        userModel?.userType.capitalize() ?? 'Buyer Account',
+                        style: AppTextStyles.caption.copyWith(
+                          color: Colors.green,
+                        ),
+                      ),
+                    ],
+                  )
+                ],
+              ),
+
+              const SizedBox(height: 14),
+              const Divider(),
+              const SizedBox(height: 24),
+
               // Name field
               _isEditing
                   ? CustomTextField(
@@ -210,14 +248,14 @@ class _ProfileTabState extends State<ProfileTab> {
               )
                   : ProfileField(
                 label: 'Name',
-                value: user?.name ?? 'Not set',
+                value: userModel?.name ?? 'Not set',
               ),
               const SizedBox(height: 16),
 
               // Email field (always read-only)
               ProfileField(
                 label: 'Email',
-                value: user?.email ?? 'Not set',
+                value: userModel?.email ?? 'Not set',
               ),
               const SizedBox(height: 16),
 
@@ -289,8 +327,8 @@ class _ProfileTabState extends State<ProfileTab> {
               )
                   : ProfileField(
                 label: 'Phone Number',
-                value: user?.phoneNumber.isNotEmpty == true
-                    ? user!.phoneNumber
+                value: userModel?.phoneNumber?.isNotEmpty == true
+                    ? userModel!.phoneNumber
                     : 'Not set',
               ),
               const SizedBox(height: 16),
@@ -303,8 +341,8 @@ class _ProfileTabState extends State<ProfileTab> {
               )
                   : ProfileField(
                 label: 'Address',
-                value: (user?.address != null && user!.address!.isNotEmpty)
-                    ? user.address!
+                value: (userModel?.address != null && userModel!.address!.isNotEmpty)
+                    ? userModel.address!
                     : 'Not set',
               ),
               const SizedBox(height: 24),
@@ -333,13 +371,13 @@ class _ProfileTabState extends State<ProfileTab> {
   @override
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context);
-    final user = userProvider.currentUser;
+    final UserModel? userModel = userProvider.currentUser;
     final bool providerIsLoading = userProvider.isLoading;
 
     if (providerIsLoading || _isLoading) {
       return Stack(
         children: [
-          _buildProfileForm(user), // Keep the form visible
+          _buildProfileForm(userModel), // Keep the form visible
           Container(
             color: Colors.white.withOpacity(0.7),
             width: double.infinity,
@@ -359,7 +397,14 @@ class _ProfileTabState extends State<ProfileTab> {
         ],
       );
     }
-    return _buildProfileForm(user);
+    return _buildProfileForm(userModel);
+  }
+}
+
+// Extension method to capitalize the first letter of a string
+extension StringExtension on String {
+  String capitalize() {
+    return "${this[0].toUpperCase()}${this.substring(1)}";
   }
 }
 

@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:e_commerce_app/core/providers/user_provider.dart';
 
 class Product {
   final String id;
+  final String email;
   final String name;
   final String description;
   final double minPrice;
@@ -21,6 +23,7 @@ class Product {
 
   Product({
     required this.id,
+    required this.email,
     required this.name,
     required this.description,
     required this.minPrice,
@@ -45,6 +48,7 @@ class Product {
 
     return Product(
       id: doc.id,
+      email: data['email'] ?? '',
       name: data['name'] ?? '',
       description: data['description'],
       minPrice: (data['minPrice'] ?? 0).toDouble(),
@@ -68,6 +72,7 @@ class Product {
   Map<String, dynamic> toMap() {
     return {
       'name': name,
+      'email':email,
       'description': description,
       'minPrice': minPrice,
       'maxPrice': maxPrice,
@@ -89,6 +94,7 @@ class Product {
   // Create a copy of the Product with updated fields
   Product copyWith({
     String? id,
+    String? email,
     String? name,
     String? description,
     double? minPrice,
@@ -108,6 +114,7 @@ class Product {
   }) {
     return Product(
       id: id ?? this.id,
+      email: email?? this.email,
       name: name ?? this.name,
       description: description ?? this.description,
       minPrice: minPrice ?? this.minPrice,
