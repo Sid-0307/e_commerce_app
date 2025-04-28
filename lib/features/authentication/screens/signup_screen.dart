@@ -2,6 +2,7 @@ import 'package:drop_down_search_field/drop_down_search_field.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/background_decorations.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
@@ -30,6 +31,9 @@ class _SignupScreenState extends State<SignupScreen> {
   final _authService = AuthService();
   String? _phoneError = null;
 
+  // Add a boolean to track terms and conditions acceptance
+  bool _acceptedTerms = false;
+
   bool _isLoading = false;
   String _userType = 'Buyer'; // Default type// Default country code (IND)
 
@@ -45,7 +49,7 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Future<void> _signup() async {
-    if (_formKey.currentState!.validate()) {
+    if (_formKey.currentState!.validate() && _acceptedTerms) {
       setState(() {
         _isLoading = true;
       });
@@ -212,31 +216,6 @@ class _SignupScreenState extends State<SignupScreen> {
                                 },
                               ),
                               const SizedBox(height: 16),
-                              // Container(
-                              //   padding: const EdgeInsets.symmetric(horizontal: 12),
-                              //   decoration: BoxDecoration(
-                              //     color: AppColors.inputBackground.withOpacity(0.15),
-                              //     borderRadius: BorderRadius.circular(8),
-                              //   ),
-                              //   child: DropdownButton<String>(
-                              //     value: _userType,
-                              //     isExpanded: true,
-                              //     underline: Container(),
-                              //     onChanged: (String? newValue) {
-                              //       if (newValue != null) {
-                              //         setState(() {
-                              //           _userType = newValue;
-                              //         });
-                              //       }
-                              //     },
-                              //     items: _userTypes.map<DropdownMenuItem<String>>((String value) {
-                              //       return DropdownMenuItem<String>(
-                              //         value: value,
-                              //         child: Text(value.substring(0, 1).toUpperCase() + value.substring(1)),
-                              //       );
-                              //     }).toList(),
-                              //   ),
-                              // ),
                               DropdownButtonFormField2<String>(
                                 isExpanded: true,
                                 value: _userType,
@@ -285,21 +264,70 @@ class _SignupScreenState extends State<SignupScreen> {
                                 dropdownStyleData: DropdownStyleData(
                                   elevation: 4,
                                   decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
-                                  color: AppColors.lightTertiary, // Same as your field background
-                                  border: Border.all(
-                                    color: AppColors.primary.withOpacity(0.2),
-                                    width: 0.5,
+                                    borderRadius: BorderRadius.circular(8),
+                                    color: AppColors.lightTertiary, // Same as your field background
+                                    border: Border.all(
+                                      color: AppColors.primary.withOpacity(0.2),
+                                      width: 0.5,
+                                    ),
                                   ),
                                 ),
-                                ),
                               ),
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 10),
+
+                              // Terms and conditions checkbox
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Checkbox(
+                                    value: _acceptedTerms,
+                                    activeColor: AppColors.primary,
+                                    onChanged: (bool? value) {
+                                      setState(() {
+                                        _acceptedTerms = value ?? false;
+                                      });
+                                    },
+                                  ),
+                                  Flexible(
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'I agree to the ',
+                                          style: TextStyle(color: AppColors.black,fontSize: 13),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        Flexible(
+                                          child: GestureDetector(
+                                            onTap: () async {
+                                              final Uri url = Uri.parse('https://youtube.com');
+                                              if (await canLaunchUrl(url)) {
+                                                await launchUrl(url);
+                                              }
+                                            },
+                                            child: Text(
+                                              'Terms and Conditions',
+                                              style: TextStyle(
+                                                color: AppColors.primary,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                                decoration: TextDecoration.underline,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
                               _isLoading
                                   ? const Center(child: CircularProgressIndicator())
                                   : CustomButton(
                                 text: 'Create Account',
-                                onPressed: _signup,
+                                onPressed: _acceptedTerms ? _signup : (){}, // Disable button if terms not accepted
                               ),
                             ],
                           ),

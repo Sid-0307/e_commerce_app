@@ -291,6 +291,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         buyerInspection: _buyerInspection,
         createdAt: widget.product?.createdAt ?? Timestamp.now(),
         updatedAt: Timestamp.now(),
+        verified:false,
       );
 
       // Save to Firestore

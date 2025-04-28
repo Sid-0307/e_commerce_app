@@ -20,6 +20,7 @@ class Product {
   final bool? buyerInspection;
   final Timestamp createdAt;
   final Timestamp updatedAt;
+  final bool verified;
 
   Product({
     required this.id,
@@ -40,6 +41,7 @@ class Product {
     this.buyerInspection,
     required this.createdAt,
     required this.updatedAt,
+    required this.verified,
   });
 
   // Create Product from Firestore document
@@ -65,6 +67,7 @@ class Product {
       buyerInspection: data['buyerInspection'],
       createdAt: data['createdAt'] ?? Timestamp.now(),
       updatedAt: data['updatedAt'] ?? Timestamp.now(),
+      verified: data['verified'] ?? 'false',
     );
   }
 
@@ -88,6 +91,7 @@ class Product {
       'buyerInspection': buyerInspection,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
+      'verified':verified,
     };
   }
 
@@ -111,6 +115,7 @@ class Product {
     bool? buyerInspection,
     Timestamp? createdAt,
     Timestamp? updatedAt,
+    bool? verified,
   }) {
     return Product(
       id: id ?? this.id,
@@ -131,6 +136,7 @@ class Product {
       buyerInspection: buyerInspection ?? this.buyerInspection,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      verified: verified ?? this.verified,
     );
   }
 }

@@ -17,6 +17,7 @@ class _BuyerProductsTabState extends State<BuyerProductsTab> {
   String _searchQuery = '';
   String _selectedShippingTerm = 'All';
   bool _isFilterPanelOpen = false;
+  String _sortBy = 'none'; // Add this for sorting state
 
   // Price range filter
   RangeValues _priceRange = const RangeValues(0, 10000);
@@ -70,6 +71,20 @@ class _BuyerProductsTabState extends State<BuyerProductsTab> {
       _priceRange = const RangeValues(0, 10000);
       _minPrice = 0;
       _maxPrice = 10000;
+    });
+  }
+
+  // Add toggle sort method
+  void _toggleSortOrder() {
+    setState(() {
+      // Cycle through sort orders: none -> low to high -> high to low -> none
+      if (_sortBy == 'none') {
+        _sortBy = 'lowToHigh';
+      } else if (_sortBy == 'lowToHigh') {
+        _sortBy = 'highToLow';
+      } else {
+        _sortBy = 'none';
+      }
     });
   }
 
@@ -139,14 +154,14 @@ class _BuyerProductsTabState extends State<BuyerProductsTab> {
                                     splashRadius: 20,
                                   )
                                       : IconButton(
-                                        onPressed: null,
-                                        icon: Icon(
-                                        Icons.close,
-                                        size: 18,
-                                        color: Colors.transparent,
-                                        ),
-                                      splashRadius: 20,
-                                      ),
+                                    onPressed: null,
+                                    icon: Icon(
+                                      Icons.close,
+                                      size: 18,
+                                      color: Colors.transparent,
+                                    ),
+                                    splashRadius: 20,
+                                  ),
                                   border: InputBorder.none,
                                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                                   enabledBorder: InputBorder.none,
@@ -361,6 +376,13 @@ class _BuyerProductsTabState extends State<BuyerProductsTab> {
                     product.minPrice >= _minPrice && product.maxPrice <= _maxPrice
                     ).toList();
 
+                    // Apply sorting
+                    if (_sortBy == 'lowToHigh') {
+                      products.sort((a, b) => a.minPrice.compareTo(b.minPrice));
+                    } else if (_sortBy == 'highToLow') {
+                      products.sort((a, b) => b.minPrice.compareTo(a.minPrice));
+                    }
+
                     // If no products match the filters
                     if (products.isEmpty) {
                       return Center(
@@ -385,21 +407,66 @@ class _BuyerProductsTabState extends State<BuyerProductsTab> {
 
                     // Display products grid
                     return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text(
-                          '${products.length} products found',
-                          style: AppTextStyles.caption,
+                        // Products count and sort button
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${products.length} products found',
+                              style: AppTextStyles.caption,
+                            ),
+                            GestureDetector(
+                              onTap: _toggleSortOrder,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: _sortBy != 'none'
+                                      ? AppColors.primary.withOpacity(0.1)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _sortBy == 'lowToHigh'
+                                          ? 'Low to High'
+                                          : _sortBy == 'highToLow'
+                                          ? 'High to Low'
+                                          : 'Sort by Price',
+                                      style: TextStyle(
+                                        color: _sortBy != 'none'
+                                            ? AppColors.primary
+                                            : AppColors.textSecondary,
+                                        fontSize: 12,
+                                        fontWeight: _sortBy != 'none'
+                                            ? FontWeight.w600
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      _sortBy == 'lowToHigh'
+                                          ? Icons.arrow_upward
+                                          : _sortBy == 'highToLow'
+                                          ? Icons.arrow_downward
+                                          : Icons.sort,
+                                      size: 14,
+                                      color: _sortBy != 'none'
+                                          ? AppColors.primary
+                                          : AppColors.textSecondary,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 8),
                         Expanded(
-                          child: GridView.builder(
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              childAspectRatio: 0.75,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                            ),
+                          child: ListView.builder(
                             itemCount: products.length,
                             itemBuilder: (context, index) {
                               return _buildProductCard(context, products[index]);
@@ -716,122 +783,93 @@ class _BuyerProductsTabState extends State<BuyerProductsTab> {
         );
       },
       child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
-              blurRadius: 4,
+              blurRadius: 5,
               spreadRadius: 1,
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Product image
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              child: product.imageUrls != null && product.imageUrls!.isNotEmpty
-                  ? Image.network(
-                product.imageUrls![0],
-                height: 120, // Reduced height to prevent overflow
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  height: 120,
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Product Image
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: product.imageUrls != null && product.imageUrls!.isNotEmpty
+                    ? Image.network(
+                  product.imageUrls![0],
+                  width: 110,
+                  height: 110,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    width: 110,
+                    height: 110,
+                    color: AppColors.border,
+                    child: const Icon(Icons.image_not_supported, color: AppColors.textSecondary),
+                  ),
+                )
+                    : Container(
+                  width: 100,
+                  height: 100,
                   color: AppColors.border,
-                  child: const Icon(Icons.image_not_supported, color: AppColors.textSecondary),
+                  child: const Icon(Icons.image, color: AppColors.textSecondary),
                 ),
-              )
-                  : Container(
-                height: 120,
-                color: AppColors.border,
-                child: const Icon(Icons.image, color: AppColors.textSecondary),
               ),
-            ),
-
-            // Product info
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0), // Reduced padding
+              const SizedBox(width: 12),
+              // Product details
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       product.name,
-                      style: AppTextStyles.bodyLarge.copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13, // Slightly smaller font
-                      ),
+                      style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2), // Reduced spacing
+                    const SizedBox(height: 4),
                     Text(
-                      '\$${product.minPrice} - \$${product.maxPrice} ${product.priceUnit ?? ''}',
-                      style: AppTextStyles.body.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 12, // Smaller font
-                      ),
-                      maxLines: 1,
+                      product.description,
+                      style: AppTextStyles.body,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const Spacer(),
-                    // Country of origin with icon
-                    if (product.countryOfOrigin != null && product.countryOfOrigin!.isNotEmpty)
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on_outlined,
-                            size: 12, // Smaller icon
-                            color: AppColors.textSecondary,
-                          ),
-                          const SizedBox(width: 2),
-                          Expanded(
-                            child: Text(
-                              product.countryOfOrigin!,
-                              style: AppTextStyles.caption.copyWith(
-                                color: AppColors.textSecondary,
-                                fontSize: 11, // Smaller font
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                    // Shipping term
-                    if (product.shippingTerm != null && product.shippingTerm!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 1.0), // Reduced padding
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.local_shipping_outlined,
-                              size: 12, // Smaller icon
-                              color: AppColors.textSecondary,
-                            ),
-                            const SizedBox(width: 2),
-                            Expanded(
-                              child: Text(
-                                product.shippingTerm!,
-                                style: AppTextStyles.caption.copyWith(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 11, // Smaller font
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
+                      child: Text(
+                        '\$${product.minPrice} - \$${product.maxPrice} ${product.priceUnit ?? ''}',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w500,
                         ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    if (product.shippingTerm != null && product.countryOfOrigin != null)
+                      Text(
+                        '• ${product.shippingTerm} • ${product.countryOfOrigin}',
+                        style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                   ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
