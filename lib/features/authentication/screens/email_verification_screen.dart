@@ -123,9 +123,10 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send verification email: ${e.toString()}')),
-        );
+        print("Email error"+e.toString());
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   SnackBar(content: Text('Failed to send verification email: ${e.toString()}')),
+        // );
       }
     }
   }

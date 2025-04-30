@@ -38,12 +38,15 @@ class AuthService {
       rethrow;
     }
   }
+
   Future<User?> signUp(
       String email,
       String password,
       String name,
       String userType,
-      String phoneNumber
+      String phoneNumber,
+      String countryCode, // Added country code parameter
+      String countryISOCode,
       ) async {
     try {
       final userCredential = await _auth.createUserWithEmailAndPassword(
@@ -58,6 +61,8 @@ class AuthService {
         'name': name,
         'userType': userType,
         'phoneNumber': phoneNumber,
+        'countryCode': countryCode, // Store country code separately
+        'countryISOCode':countryISOCode,
         'createdAt': FieldValue.serverTimestamp(),
       });
       await user!.updateDisplayName(name);

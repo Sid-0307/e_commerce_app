@@ -6,6 +6,8 @@ class Product {
   final String email;
   final String name;
   final String description;
+  final String hsCode;
+  final String hsProduct; // Added new field for HS product name
   final double minPrice;
   final double maxPrice;
   final String? priceUnit;
@@ -27,6 +29,8 @@ class Product {
     required this.email,
     required this.name,
     required this.description,
+    required this.hsCode,
+    required this.hsProduct, // Added to constructor
     required this.minPrice,
     required this.maxPrice,
     this.priceUnit,
@@ -44,6 +48,11 @@ class Product {
     required this.verified,
   });
 
+  // Helper method to format HS code and product together
+  String getHsCodeWithProduct() {
+    return '$hsCode-$hsProduct';
+  }
+
   // Create Product from Firestore document
   factory Product.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
@@ -53,6 +62,8 @@ class Product {
       email: data['email'] ?? '',
       name: data['name'] ?? '',
       description: data['description'],
+      hsCode: data['hsCode'] ?? '',
+      hsProduct: data['hsProduct'] ?? '', // Added to fetch from Firestore
       minPrice: (data['minPrice'] ?? 0).toDouble(),
       maxPrice: (data['maxPrice'] ?? 0).toDouble(),
       priceUnit: data['priceUnit'],
@@ -67,7 +78,7 @@ class Product {
       buyerInspection: data['buyerInspection'],
       createdAt: data['createdAt'] ?? Timestamp.now(),
       updatedAt: data['updatedAt'] ?? Timestamp.now(),
-      verified: data['verified'] ?? 'false',
+      verified: data['verified'] ?? false,
     );
   }
 
@@ -75,8 +86,10 @@ class Product {
   Map<String, dynamic> toMap() {
     return {
       'name': name,
-      'email':email,
+      'email': email,
       'description': description,
+      'hsCode': hsCode,
+      'hsProduct': hsProduct, // Added to save to Firestore
       'minPrice': minPrice,
       'maxPrice': maxPrice,
       'priceUnit': priceUnit,
@@ -91,7 +104,7 @@ class Product {
       'buyerInspection': buyerInspection,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
-      'verified':verified,
+      'verified': verified,
     };
   }
 
@@ -101,6 +114,8 @@ class Product {
     String? email,
     String? name,
     String? description,
+    String? hsCode,
+    String? hsProduct, // Added to copyWith
     double? minPrice,
     double? maxPrice,
     String? priceUnit,
@@ -119,9 +134,11 @@ class Product {
   }) {
     return Product(
       id: id ?? this.id,
-      email: email?? this.email,
+      email: email ?? this.email,
       name: name ?? this.name,
       description: description ?? this.description,
+      hsCode: hsCode ?? this.hsCode,
+      hsProduct: hsProduct ?? this.hsProduct, // Added to copyWith return
       minPrice: minPrice ?? this.minPrice,
       maxPrice: maxPrice ?? this.maxPrice,
       priceUnit: priceUnit ?? this.priceUnit,

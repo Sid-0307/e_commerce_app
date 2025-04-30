@@ -27,7 +27,12 @@ class _SignupScreenState extends State<SignupScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  String _phoneController='';
+
+  // Update phone handling
+  String _phoneNumber = '';
+  String _countryCode = '+91'; // Default country code (IND)
+  String _countryISOCode = 'IN';
+
   final _authService = AuthService();
   String? _phoneError = null;
 
@@ -35,9 +40,9 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _acceptedTerms = false;
 
   bool _isLoading = false;
-  String _userType = 'Buyer'; // Default type// Default country code (IND)
+  String _userType = 'Buyer'; // Default type
 
-  final List<String> _userTypes = ['Buyer', 'Seller']; // Define the list of user types// Common country codes
+  final List<String> _userTypes = ['Buyer', 'Seller']; // Define the list of user types
 
   @override
   void dispose() {
@@ -54,19 +59,21 @@ class _SignupScreenState extends State<SignupScreen> {
         _isLoading = true;
       });
       try {
-        if (_phoneController.length <= 5) {
+        if (_phoneNumber.isEmpty) {
           setState(() {
             _phoneError = 'Please enter your phone number';
           });
-          return ;
+          return;
         }
-        // Sign up the user
+        // Sign up the user with separate phone number and country code
         final user = await _authService.signUp(
           _emailController.text.trim(),
           _passwordController.text.trim(),
           _nameController.text.trim(),
           _userType,
-          _phoneController,
+          _phoneNumber,
+          _countryCode, // Pass country code separately
+          _countryISOCode,
         );
 
         // Send email verification
@@ -170,7 +177,6 @@ class _SignupScreenState extends State<SignupScreen> {
                                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
-                                    // borderSide: BorderSide.none,
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
@@ -193,7 +199,10 @@ class _SignupScreenState extends State<SignupScreen> {
                                 ),
                                 initialCountryCode: 'IN',
                                 onChanged: (phone) {
-                                  _phoneController=phone.completeNumber;
+                                  // Store phone number and country code separately
+                                  _phoneNumber = phone.number;
+                                  _countryCode = phone.countryCode;
+                                  _countryISOCode = phone.countryISOCode;
                                   setState(() {
                                     _phoneError = null;
                                   });
@@ -259,7 +268,6 @@ class _SignupScreenState extends State<SignupScreen> {
                                   setState(() {
                                     _userType = value!;
                                   });
-                                  print('Selected role: $value');
                                 },
                                 dropdownStyleData: DropdownStyleData(
                                   elevation: 4,

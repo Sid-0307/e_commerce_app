@@ -1,5 +1,6 @@
 // lib/features/buyer/tabs/profile_tab.dart
 import 'package:flutter/material.dart';
+import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
@@ -25,13 +26,10 @@ class _BuyerProfileTabState extends State<BuyerProfileTab> {
   late TextEditingController _phoneController;
   late TextEditingController _addressController;
 
-  // Country code selection
-  String _selectedCountryCode = '+1'; // Default to US
-
-  // List of country codes for dropdown
-  final List<String> _countryCodes = [
-    '+1', '+44', '+91', '+61', '+81', '+86', '+49', '+33', '+7', '+55'
-  ];
+  String _phoneNumber = '';
+  String _countryCode = '+91'; // Default, will be updated from user model
+  String _countryISOCode = 'IN';
+  String? _phoneError;
 
   final _formKey = GlobalKey<FormState>();
   final FirestoreService _firestoreService = FirestoreService();
@@ -48,25 +46,9 @@ class _BuyerProfileTabState extends State<BuyerProfileTab> {
     _nameController = TextEditingController(text: userModel?.name ?? '');
 
     // Parse phone number to separate country code and number if exists
-    if (userModel?.phoneNumber != null && userModel!.phoneNumber.isNotEmpty) {
-      // Check if the phone number already contains a country code
-      String phoneNumber = userModel.phoneNumber;
-      // Find the country code from the phone number
-      String countryCode = _countryCodes.firstWhere(
-            (code) => phoneNumber.startsWith(code),
-        orElse: () => '+1', // Default to +1 if not found
-      );
-
-      // Remove country code from phone number if it exists
-      String number = phoneNumber.startsWith('+')
-          ? phoneNumber.substring(countryCode.length)
-          : phoneNumber;
-
-      _phoneController = TextEditingController(text: number);
-      _selectedCountryCode = countryCode;
-    } else {
-      _phoneController = TextEditingController();
-    }
+    _phoneNumber = userModel?.phoneNumber ?? '';
+    _countryCode = userModel?.countryCode ?? '+91';
+    _countryISOCode = userModel?.countryISOCode ?? 'IN';
 
     _addressController = TextEditingController(text: userModel?.address ?? '');
   }
@@ -109,6 +91,13 @@ class _BuyerProfileTabState extends State<BuyerProfileTab> {
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_phoneNumber.isEmpty) {
+      setState(() {
+        _phoneError = 'Please enter your phone number';
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -121,15 +110,16 @@ class _BuyerProfileTabState extends State<BuyerProfileTab> {
         throw Exception('User not found');
       }
 
-      // Combine country code and phone number
-      final fullPhoneNumber = _selectedCountryCode + _phoneController.text.trim();
-
       // Prepare updated user data
       final updatedData = {
         'name': _nameController.text.trim(),
-        'phoneNumber': fullPhoneNumber,
+        'phoneNumber': _phoneNumber,
+        'countryCode': _countryCode,
+        'countryISOCode':_countryISOCode,
         'address': _addressController.text.trim(),
       };
+
+      print(updatedData);
 
       // Update in Firestore
       await _firestoreService.updateUserData(userModel.uid, updatedData);
@@ -143,7 +133,9 @@ class _BuyerProfileTabState extends State<BuyerProfileTab> {
       // Create updated UserModel
       final updatedUserModel = userModel.copyWith(
         name: _nameController.text.trim(),
-        phoneNumber: fullPhoneNumber,
+        phoneNumber: _phoneNumber,
+        countryCode: _countryCode,
+        countryISOCode: _countryISOCode,
         address: _addressController.text.trim(),
       );
 
@@ -264,73 +256,58 @@ class _BuyerProfileTabState extends State<BuyerProfileTab> {
                   ? Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Country code dropdown
-                      Container(
-                        height: 56, // Match the height of CustomTextField
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          color: AppColors.tertiary.withOpacity(0.15),
-                          border: Border.all(
-                            color: AppColors.primary.withOpacity(0.2),
-                            width: 0.5,
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Center(
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: _selectedCountryCode,
-                              onChanged: (newValue) {
-                                setState(() {
-                                  _selectedCountryCode = newValue!;
-                                });
-                              },
-                              isDense: true,
-                              items: _countryCodes.map<
-                                  DropdownMenuItem<String>>((String value) {
-                                return DropdownMenuItem<String>(
-                                  value: value,
-                                  child: Text(value),
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                        ),
+                  IntlPhoneField(
+                    decoration: InputDecoration(
+                      labelText: 'Phone Number',
+                      labelStyle: TextStyle(
+                        color: AppColors.black.withOpacity(0.6),
                       ),
-                      const SizedBox(width: 8),
-                      // Phone number input field
-                      Expanded(
-                        child: CustomTextField(
-                          controller: _phoneController,
-                          labelText: 'Phone number',
-                          keyboardType: TextInputType.phone,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter your phone number';
-                            }
-                            if (value.length != 10) {
-                              return 'Phone number must be 10 digits';
-                            }
-                            if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                              return 'Only digits are allowed';
-                            }
-                            return null;
-                          },
-                        ),
+                      floatingLabelBehavior: FloatingLabelBehavior.auto,
+                      filled: true,
+                      fillColor: AppColors.tertiary.withOpacity(0.15),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    ],
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.primary.withOpacity(0.2), width: 0.5),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.primary.withOpacity(0.6), width: 1.5),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Colors.red, width: 1.0),
+                      ),
+                      floatingLabelStyle: TextStyle(
+                        color: AppColors.primary.withOpacity(0.6),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      counterText: '',
+                      errorText: _phoneError,
+                    ),
+                    initialCountryCode: userModel?.countryISOCode,
+                    initialValue: userModel?.phoneNumber ?? '',
+                    onChanged: (phone) {
+                      _phoneNumber = phone.number;
+                      _countryCode = phone.countryCode;
+                      _countryISOCode = phone.countryISOCode;
+                      setState(() {
+                        _phoneError = null;
+                      });
+                    },
                   ),
                 ],
               )
                   : ProfileField(
                 label: 'Phone Number',
-                value: userModel?.phoneNumber?.isNotEmpty == true
-                    ? userModel!.phoneNumber
+                value: (userModel?.phoneNumber.isNotEmpty == true && userModel?.countryCode.isNotEmpty == true)
+                    ? userModel!.completePhoneNumber
                     : 'Not set',
               ),
+
               const SizedBox(height: 16),
 
               // Address field

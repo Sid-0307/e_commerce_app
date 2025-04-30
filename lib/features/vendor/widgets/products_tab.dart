@@ -342,12 +342,26 @@ import 'package:flutter/material.dart';
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            product.name,
-                            style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                            Text(
+                                product.name,
+                                style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            if (product.verified == true)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 4.0),
+                                child: Icon(
+                                  Icons.verified,
+                                  size: 16,
+                                  color: Colors.green,
+                                ),
+                              ),
+                          ],
+                        ),
                           const SizedBox(height: 4),
                           Text(
                             product.description,

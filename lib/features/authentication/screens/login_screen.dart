@@ -32,6 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _authService = AuthService();
   bool _isLoading = false;
 
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -63,14 +64,14 @@ class _LoginScreenState extends State<LoginScreen> {
           Future.delayed(const Duration(seconds: 1), () {
             if (mounted) {
               // Check user type and redirect accordingly
-              if (user.userType == 'seller') {
+              if (user.userType == 'Seller') {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => const VendorHomeScreen(),
                   ),
                 );
-              } else if (user.userType == 'buyer') {
+              } else if (user.userType == 'Buyer') {
                 Navigator.push(
                   context,
                   MaterialPageRoute(

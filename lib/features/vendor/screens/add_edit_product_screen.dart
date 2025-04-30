@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:e_commerce_app/core/providers/user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -13,6 +14,7 @@ import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
+import '../../../core/widgets/hsCodeSearch_widget.dart';
 import '../models/product_model.dart';
 
 class AddEditProductScreen extends StatefulWidget {
@@ -46,6 +48,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   bool _showCustomPaymentTermField = false;
   late TextEditingController _customPaymentTermController;
 
+  String? _hsCode;
+  String? _hsProduct;
   String _priceUnit = 'per kg';
   String _shippingTerm = 'FOB';
   String _countryOfOrigin = 'United States';
@@ -81,6 +85,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
     // Initialize dropdown values if editing
     if (widget.product != null) {
+      _hsCode = widget.product?.hsCode;
+      _hsProduct = widget.product?.hsProduct;
       _priceUnit = widget.product!.priceUnit ?? _priceUnit;
       _shippingTerm = widget.product!.shippingTerm ?? _shippingTerm;
       _countryOfOrigin = widget.product!.countryOfOrigin ?? _countryOfOrigin;
@@ -277,6 +283,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         email: userEmail,
         name: _titleController.text,
         description: _descriptionController.text,
+        hsCode: _hsCode ?? '',
+        hsProduct: _hsProduct ?? '',
         minPrice: double.parse(_minPriceController.text),
         maxPrice: double.parse(_maxPriceController.text),
         priceUnit: _priceUnit,
@@ -418,9 +426,15 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                       const SizedBox(height: 16),
 
                       // Description
-                      Text('Description:', style: AppTextStyles.subtitle.copyWith(fontWeight: FontWeight.bold)),
+                      Text('Description: ${_descriptionController.text}', style: AppTextStyles.subtitle.copyWith(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       Text(_descriptionController.text),
+                      const SizedBox(height: 16),
+
+                      Text('HS Code:', style: AppTextStyles.subtitle.copyWith(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Text("${_hsCode} - ${_hsProduct?.substring(0,35)}..."),
+
                       const SizedBox(height: 16),
 
                       // Details
@@ -571,6 +585,21 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                 ),
                 const SizedBox(height: 24),
 
+                HSCodeSearchWidget(
+                  initialValue: _hsCode,
+                  labelText: 'HS Code',
+                  hintText: 'Select HS Code',
+                  onChanged: (hsCodeModel) {
+                    if (hsCodeModel != null) {
+                      setState(() {
+                        _hsCode = hsCodeModel.hscode;
+                        _hsProduct = hsCodeModel.description;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+
                 // Images
                 Text('Product Images (Max 3)', style: AppTextStyles.subtitle),
                 const SizedBox(height: 8),
@@ -699,125 +728,275 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                 const SizedBox(height: 24),
 
                 // Price Unit
-                Text('Price Unit', style: AppTextStyles.subtitle),
-                const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  // padding: const EdgeInsets.symmetric(horizontal: 6),
                   decoration: BoxDecoration(
                     border: Border.all(color: AppColors.border),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _priceUnit,
-                      isExpanded: true,
-                      items: _priceUnits.map((String unit) {
-                        return DropdownMenuItem<String>(
-                          value: unit,
-                          child: Text(unit),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        if (newValue != null) {
-                          setState(() {
-                            _priceUnit = newValue;
-                          });
-                        }
-                      },
+                  child: DropdownButtonFormField2<String>(
+                    isExpanded: true,
+                    value: _priceUnit,
+                    decoration: InputDecoration(
+                      labelText: ' Price Unit',
+                      labelStyle: TextStyle(
+                        color: AppColors.black.withOpacity(0.6),
+                      ),
+                      floatingLabelBehavior: FloatingLabelBehavior.auto,
+                      filled: true,
+                      fillColor: AppColors.tertiary.withOpacity(0.15),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.primary.withOpacity(0.2), width: 0.5),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.primary.withOpacity(0.6), width: 1.5),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Colors.red, width: 1.0),
+                      ),
+                      floatingLabelStyle: TextStyle(
+                        color: AppColors.primary.withOpacity(0.6),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    items: _priceUnits
+                        .map((role) => DropdownMenuItem<String>(
+                      value: role,
+                      child: Text(role),
+                    ))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _priceUnit = value!;
+                      });
+                    },
+                    dropdownStyleData: DropdownStyleData(
+                      elevation: 4,
+                      offset: const Offset(0, -4),
+                      maxHeight: 200,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: AppColors.lightTertiary, // Same as your field background
+                        border: Border.all(
+                          color: AppColors.primary.withOpacity(0.2),
+                          width: 0.5,
+                        ),
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 24),
 
                 // Shipping Term
-                Text('Shipping Term', style: AppTextStyles.subtitle),
-                const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
                     border: Border.all(color: AppColors.border),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _shippingTerm,
-                      isExpanded: true,
-                      items: _shippingTerms.map((String term) {
-                        return DropdownMenuItem<String>(
-                          value: term,
-                          child: Text(term),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        if (newValue != null) {
-                          setState(() {
-                            _shippingTerm = newValue;
-                          });
-                        }
-                      },
+                  child: DropdownButtonFormField2<String>(
+                    isExpanded: true,
+                    value: _shippingTerm,
+                    decoration: InputDecoration(
+                      labelText: 'Shipping Term',
+                      labelStyle: TextStyle(
+                        color: AppColors.black.withOpacity(0.6),
+                      ),
+                      floatingLabelBehavior: FloatingLabelBehavior.auto,
+                      filled: true,
+                      fillColor: AppColors.tertiary.withOpacity(0.15),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.primary.withOpacity(0.2), width: 0.5),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.primary.withOpacity(0.6), width: 1.5),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Colors.red, width: 1.0),
+                      ),
+                      floatingLabelStyle: TextStyle(
+                        color: AppColors.primary.withOpacity(0.6),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    items: _shippingTerms
+                        .map((role) => DropdownMenuItem<String>(
+                      value: role,
+                      child: Text(role),
+                    ))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _shippingTerm = value!;
+                      });
+                    },
+                    dropdownStyleData: DropdownStyleData(
+                      elevation: 4,
+                      offset: const Offset(0, -4),
+                      maxHeight: 200,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: AppColors.lightTertiary, // Same as your field background
+                        border: Border.all(
+                          color: AppColors.primary.withOpacity(0.2),
+                          width: 0.5,
+                        ),
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 24),
 
                 // Country of Origin
-                Text('Country of Origin', style: AppTextStyles.subtitle),
-                const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
                     border: Border.all(color: AppColors.border),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _countryOfOrigin,
-                      isExpanded: true,
-                      items: _countries.map((String country) {
-                        return DropdownMenuItem<String>(
-                          value: country,
-                          child: Text(country),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        if (newValue != null) {
-                          setState(() {
-                            _countryOfOrigin = newValue;
-                          });
-                        }
-                      },
+                  child: DropdownButtonFormField2<String>(
+                    isExpanded: true,
+                    value: _countryOfOrigin,
+                    decoration: InputDecoration(
+                      labelText: 'Country Of Origin',
+                      labelStyle: TextStyle(
+                        color: AppColors.black.withOpacity(0.6),
+                      ),
+                      floatingLabelBehavior: FloatingLabelBehavior.auto,
+                      filled: true,
+                      fillColor: AppColors.tertiary.withOpacity(0.15),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.primary.withOpacity(0.2), width: 0.5),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.primary.withOpacity(0.6), width: 1.5),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Colors.red, width: 1.0),
+                      ),
+                      floatingLabelStyle: TextStyle(
+                        color: AppColors.primary.withOpacity(0.6),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    items: _countries
+                        .map((role) => DropdownMenuItem<String>(
+                      value: role,
+                      child: Text(role),
+                    ))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _countryOfOrigin = value!;
+                      });
+                    },
+                    dropdownStyleData: DropdownStyleData(
+                      elevation: 4,
+                      offset: const Offset(0, -4),
+                      maxHeight: 200,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: AppColors.lightTertiary, // Same as your field background
+                        border: Border.all(
+                          color: AppColors.primary.withOpacity(0.2),
+                          width: 0.5,
+                        ),
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 24),
 
                 // Payment Terms - REPLACED with dropdown + optional text field
-                Text('Payment Terms', style: AppTextStyles.subtitle),
-                const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
                     border: Border.all(color: AppColors.border),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedPaymentTerm,
-                      isExpanded: true,
-                      items: _paymentTerms.map((String term) {
-                        return DropdownMenuItem<String>(
-                          value: term,
-                          child: Text(term),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        if (newValue != null) {
-                          setState(() {
-                            _selectedPaymentTerm = newValue;
-                            _showCustomPaymentTermField = (newValue == 'Other');
-                          });
+                  child: DropdownButtonFormField2<String>(
+                    isExpanded: true,
+                    value: _selectedPaymentTerm,
+                    decoration: InputDecoration(
+                      labelText: 'Payment terms',
+                      labelStyle: TextStyle(
+                        color: AppColors.black.withOpacity(0.6),
+                      ),
+                      floatingLabelBehavior: FloatingLabelBehavior.auto,
+                      filled: true,
+                      fillColor: AppColors.tertiary.withOpacity(0.15),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.primary.withOpacity(0.2), width: 0.5),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppColors.primary.withOpacity(0.6), width: 1.5),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Colors.red, width: 1.0),
+                      ),
+                      floatingLabelStyle: TextStyle(
+                        color: AppColors.primary.withOpacity(0.6),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    items: _paymentTerms
+                        .map((role) => DropdownMenuItem<String>(
+                      value: role,
+                      child: Text(role),
+                    ))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedPaymentTerm = value!;
+                        if(_selectedPaymentTerm == "Other"){
+                          _showCustomPaymentTermField = true;
                         }
-                      },
+                        else{
+                          _showCustomPaymentTermField = false;
+                        }
+                      });
+                    },
+                    dropdownStyleData: DropdownStyleData(
+                      elevation: 4,
+                      offset: const Offset(0, -4),
+                      maxHeight: 200,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: AppColors.lightTertiary, // Same as your field background
+                        border: Border.all(
+                          color: AppColors.primary.withOpacity(0.2),
+                          width: 0.5,
+                        ),
+                      ),
                     ),
                   ),
                 ),
