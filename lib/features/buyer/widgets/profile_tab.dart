@@ -1,4 +1,3 @@
-// lib/features/buyer/tabs/profile_tab.dart
 import 'package:flutter/material.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:provider/provider.dart';
@@ -9,7 +8,8 @@ import '../../../core/services/firestore_service.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../../core/models/user_model.dart'; // Import UserModel
+import '../../../core/models/user_model.dart';
+import '../../../core/widgets/hsCodeSearch_widget.dart';
 
 class BuyerProfileTab extends StatefulWidget {
   const BuyerProfileTab({Key? key}) : super(key: key);
@@ -23,13 +23,16 @@ class _BuyerProfileTabState extends State<BuyerProfileTab> {
   bool _isLoading = false;
 
   late TextEditingController _nameController;
-  late TextEditingController _phoneController;
   late TextEditingController _addressController;
 
   String _phoneNumber = '';
-  String _countryCode = '+91'; // Default, will be updated from user model
+  String _countryCode = '+91';
   String _countryISOCode = 'IN';
   String? _phoneError;
+
+  // HS Code preferences - using List<String?> to properly handle null values
+  List<String?> _selectedHSCodes = [];
+  List<String> _hsCodePreferences = [];
 
   final _formKey = GlobalKey<FormState>();
   final FirestoreService _firestoreService = FirestoreService();
@@ -40,8 +43,8 @@ class _BuyerProfileTabState extends State<BuyerProfileTab> {
     _initControllers();
   }
 
-  void _initControllers() {
-    final UserModel? userModel = Provider.of<UserProvider>(context, listen: false).currentUser;
+  Future<void> _initControllers() async {
+    final UserModel? userModel = await Provider.of<UserProvider>(context, listen: false).currentUser;
 
     _nameController = TextEditingController(text: userModel?.name ?? '');
 
@@ -51,12 +54,22 @@ class _BuyerProfileTabState extends State<BuyerProfileTab> {
     _countryISOCode = userModel?.countryISOCode ?? 'IN';
 
     _addressController = TextEditingController(text: userModel?.address ?? '');
+
+    // Initialize HS code preferences from user model
+    _hsCodePreferences = List<String>.from(userModel?.hsCodePreferences ?? []);
+
+    // Initialize selected HS codes with existing preferences and ensure it has right length
+    _selectedHSCodes = List<String?>.from(_hsCodePreferences);
+
+    // Make sure we have at least 3 slots for HS codes (which may be null)
+    while (_selectedHSCodes.length < 3) {
+      _selectedHSCodes.add(null);
+    }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _phoneController.dispose();
     _addressController.dispose();
     super.dispose();
   }
@@ -110,16 +123,23 @@ class _BuyerProfileTabState extends State<BuyerProfileTab> {
         throw Exception('User not found');
       }
 
+      // Filter out null values and collect only the HS codes as strings
+      _hsCodePreferences = _selectedHSCodes
+          .where((hsCode) => hsCode != null)
+          .map((hsCode) => hsCode!) // Safe to use ! after filtering nulls
+          .toList();
+
+      print("HSCODE: ${_hsCodePreferences} \n\n Selected: ${_selectedHSCodes}");
+
       // Prepare updated user data
       final updatedData = {
         'name': _nameController.text.trim(),
         'phoneNumber': _phoneNumber,
         'countryCode': _countryCode,
-        'countryISOCode':_countryISOCode,
+        'countryISOCode': _countryISOCode,
         'address': _addressController.text.trim(),
+        'hsCodePreferences': _hsCodePreferences, // Add HS code preferences
       };
-
-      print(updatedData);
 
       // Update in Firestore
       await _firestoreService.updateUserData(userModel.uid, updatedData);
@@ -137,10 +157,21 @@ class _BuyerProfileTabState extends State<BuyerProfileTab> {
         countryCode: _countryCode,
         countryISOCode: _countryISOCode,
         address: _addressController.text.trim(),
+        hsCodePreferences: _hsCodePreferences, // Add HS code preferences
       );
 
       // Refresh user data in the provider
       userProvider.updateLocalUserData(updatedUserModel);
+
+      _hsCodePreferences = List<String>.from(updatedUserModel.hsCodePreferences);
+
+      // Initialize selected HS codes with existing preferences and ensure it has right length
+      _selectedHSCodes = List<String?>.from(_hsCodePreferences);
+
+      // Make sure we have at least 3 slots for HS codes (which may be null)
+      while (_selectedHSCodes.length < 3) {
+        _selectedHSCodes.add(null);
+      }
 
       // Switch back to viewing mode
       setState(() {
@@ -163,7 +194,37 @@ class _BuyerProfileTabState extends State<BuyerProfileTab> {
     }
   }
 
+  // Build a widget to display the HS code preferences in view mode
+  Widget _buildHSCodePreferenceList(List<String> hsCodes) {
+    if (hsCodes.isEmpty) {
+      return const Text('Not set',
+          style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey));
+    }
+
+    return Wrap(
+      spacing: 8.0,
+      runSpacing: 8.0,
+      children: hsCodes.map((code) => Container(
+        margin: EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16.0),
+          border: Border.all(color: AppColors.primary, width: 1.0),
+        ),
+        child: Text(
+          code,
+          style: AppTextStyles.body.copyWith(
+            color: AppColors.secondary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      )).toList(),
+    );
+  }
+
   Widget _buildProfileForm(UserModel? userModel) {
+    print("Selected : ${_selectedHSCodes}");
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -224,7 +285,7 @@ class _BuyerProfileTabState extends State<BuyerProfileTab> {
 
               const SizedBox(height: 14),
               const Divider(),
-              const SizedBox(height: 24),
+              const SizedBox(height: 14),
 
               // Name field
               _isEditing
@@ -322,6 +383,81 @@ class _BuyerProfileTabState extends State<BuyerProfileTab> {
                     ? userModel.address!
                     : 'Not set',
               ),
+              const SizedBox(height: 16),
+
+              // HS Code Preferences
+              _isEditing
+                  ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'HS Code Preferences',
+                    style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // First HS Code Preference
+                  HSCodeSearchWidget(
+                    labelText: 'Preference 1',
+                    initialValue: _selectedHSCodes.isNotEmpty && _selectedHSCodes[0] != null
+                        ? _selectedHSCodes[0]
+                        : null,
+                    onChanged: (hsCode) {
+                      setState(() {
+                        if (_selectedHSCodes.length > 0) {
+                          _selectedHSCodes[0] = hsCode?.hscode;
+                        } else {
+                          _selectedHSCodes.add(hsCode?.hscode);
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Second HS Code Preference
+                  HSCodeSearchWidget(
+                    labelText: 'Preference 2',
+                    initialValue: _selectedHSCodes.length > 1 ? _selectedHSCodes[1] : null,
+                    onChanged: (hsCode) {
+                      setState(() {
+                        if (_selectedHSCodes.length > 1) {
+                          _selectedHSCodes[1] = hsCode?.hscode;
+                        } else if (_selectedHSCodes.length == 1) {
+                          _selectedHSCodes.add(hsCode?.hscode);
+                        } else {
+                          // If somehow we don't have an element at index 0
+                          _selectedHSCodes = [null, hsCode?.hscode];
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Third HS Code Preference
+                  HSCodeSearchWidget(
+                    labelText: 'Preference 3',
+                    initialValue: _selectedHSCodes.length > 2 ? _selectedHSCodes[2] : null,
+                    onChanged: (hsCode) {
+                      setState(() {
+                        if (_selectedHSCodes.length > 2) {
+                          _selectedHSCodes[2] = hsCode?.hscode;
+                        } else if (_selectedHSCodes.length == 2) {
+                          _selectedHSCodes.add(hsCode?.hscode);
+                        } else if (_selectedHSCodes.length == 1) {
+                          _selectedHSCodes.addAll([null, hsCode?.hscode]);
+                        } else {
+                          // If somehow we have no elements
+                          _selectedHSCodes = [null, null, hsCode?.hscode];
+                        }
+                      });
+                    },
+                  ),
+                ],
+              )
+                  : ProfileField(
+                label: 'HS Code Preferences',
+                customChild: _buildHSCodePreferenceList(userModel?.hsCodePreferences ?? []),
+              ),
               const SizedBox(height: 24),
 
               // Toggle button: Edit Profile / Save
@@ -388,11 +524,13 @@ extension StringExtension on String {
 class ProfileField extends StatelessWidget {
   final String label;
   final String value;
+  final Widget? customChild;
 
   const ProfileField({
     Key? key,
     required this.label,
-    required this.value,
+    this.value = '',
+    this.customChild,
   }) : super(key: key);
 
   @override
@@ -418,10 +556,13 @@ class ProfileField extends StatelessWidget {
             style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 4),
-          Text(
-            value,
-            style: AppTextStyles.body,
-          ),
+          if (customChild != null)
+            customChild!
+          else
+            Text(
+              value,
+              style: AppTextStyles.body,
+            ),
         ],
       ),
     );

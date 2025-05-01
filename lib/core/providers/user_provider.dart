@@ -25,7 +25,10 @@ class UserProvider extends ChangeNotifier {
         name: userData?['name'] ?? user.name,
         userType: userData?['userType'] ?? user.userType, // Add userType
         phoneNumber: userData?['phoneNumber'] ?? user.phoneNumber,
+        countryCode: userData?['countryCode'] ?? user.countryCode,
+        countryISOCode: userData?['countryISOCode'] ?? user.countryISOCode,
         address: userData?['address'] ?? user.address,
+        hsCodePreferences: userData?['hsCodePreferences'] ?? user.hsCodePreferences,
       );
     } catch (e) {
       // If Firestore fetch fails, use the provided user model

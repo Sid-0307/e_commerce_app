@@ -342,151 +342,278 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       paymentTerms = _customPaymentTermController.text;
     }
 
+    final screenWidth = MediaQuery.of(context).size.width;
+
     showDialog(
       context: context,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Container(
-          width: MediaQuery.of(context).size.width * 0.9,
-          padding: const EdgeInsets.all(16),
+          width: screenWidth > 600 ? 560 : screenWidth * 0.95,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
+          ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Product Preview',
-                    style: AppTextStyles.heading.copyWith(fontWeight: FontWeight.bold),
+              // Header with fancy styling
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Product Preview',
+                      style: AppTextStyles.heading.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
               ),
-              const Divider(),
 
               // Content
-              Expanded(
+              Flexible(
                 child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Images
+                      // Images carousel with better styling
                       if (_selectedImages.isNotEmpty)
-                        SizedBox(
-                          height: 200,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: _selectedImages.length,
-                            itemBuilder: (context, index) {
-                              return Container(
-                                width: 200,
-                                height: 200,
-                                margin: const EdgeInsets.only(right: 8),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
-                                  image: DecorationImage(
-                                    image: _selectedImages[index] is File
-                                        ? FileImage(_selectedImages[index] as File) as ImageProvider
-                                        : NetworkImage(_selectedImages[index].toString()),
-                                    fit: BoxFit.cover,
+                        Container(
+                          height: 240,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: PageView.builder(
+                              itemCount: _selectedImages.length,
+                              itemBuilder: (context, index) {
+                                return Container(
+                                  decoration: BoxDecoration(
+                                    image: DecorationImage(
+                                      image: _selectedImages[index] is File
+                                          ? FileImage(_selectedImages[index] as File) as ImageProvider
+                                          : NetworkImage(_selectedImages[index].toString()),
+                                      fit: BoxFit.cover,
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
+                                );
+                              },
+                            ),
                           ),
                         ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
 
-                      // Title
+                      // Title with better styling
                       Text(
                         _titleController.text,
-                        style: AppTextStyles.heading.copyWith(fontWeight: FontWeight.bold),
+                        style: AppTextStyles.heading.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 22,
+                        ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 16),
 
-                      // Price
+                      // Price card with better styling
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
+                          color: AppColors.primary.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppColors.primary.withOpacity(0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.monetization_on, color: AppColors.primary),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Price Range',
+                                    style: AppTextStyles.caption.copyWith(
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '\$${_minPriceController.text} - \$${_maxPriceController.text} $_priceUnit',
+                                    style: AppTextStyles.subtitle.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primary,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Description section
+                      _buildSectionTitle('Description'),
+                      const SizedBox(height: 8),
+                      Text(
+                        _descriptionController.text,
+                        style: AppTextStyles.body,
+                      ),
+                      const SizedBox(height: 24),
+
+                      // HS Code section
+                      _buildSectionTitle('HS Code'),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(
-                          'Price: \$${_minPriceController.text} - \$${_maxPriceController.text} $_priceUnit',
-                          style: AppTextStyles.subtitle.copyWith(color: AppColors.primary),
+                        child: Row(
+                          children: [
+                            Text(
+                              _hsCode!,
+                              style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '${_hsProduct?.substring(0, 35)}...',
+                                style: AppTextStyles.body,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
 
-                      // Description
-                      Text('Description: ${_descriptionController.text}', style: AppTextStyles.subtitle.copyWith(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text(_descriptionController.text),
-                      const SizedBox(height: 16),
+                      // Product Specs section
+                      _buildSectionTitle('Product Specifications'),
+                      const SizedBox(height: 12),
+                      _buildDetailItem('Shipping Term', _shippingTerm, Icons.local_shipping),
+                      _buildDetailItem('Country of Origin', _countryOfOrigin, Icons.public),
+                      _buildDetailItem('Payment Terms', paymentTerms, Icons.payment),
+                      _buildDetailItem('Dispatch Port', _dispatchPortController.text, Icons.directions_boat),
+                      _buildDetailItem('Transit Time', _transitTimeController.text, Icons.timelapse),
+                      _buildDetailItem('Buyer Inspection', _buyerInspection ? 'Yes' : 'No', Icons.visibility),
 
-                      Text('HS Code:', style: AppTextStyles.subtitle.copyWith(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text("${_hsCode} - ${_hsProduct?.substring(0,35)}..."),
-
-                      const SizedBox(height: 16),
-
-                      // Details
-                      Text('Details:', style: AppTextStyles.subtitle.copyWith(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      _buildDetailRow('Shipping Term', _shippingTerm),
-                      _buildDetailRow('Country of Origin', _countryOfOrigin),
-                      _buildDetailRow('Payment Terms', paymentTerms),
-                      _buildDetailRow('Dispatch Port', _dispatchPortController.text),
-                      _buildDetailRow('Transit Time', _transitTimeController.text),
-                      _buildDetailRow('Buyer Inspection', _buyerInspection ? 'Yes' : 'No'),
-
-                      // Test Report
-                      if (_selectedTestReportFile != null || _selectedTestReportUrl != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 16),
+                      // Test Report section
+                      if (_selectedTestReportFile != null || _selectedTestReportUrl != null) ...[
+                        const SizedBox(height: 24),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.green[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.green[300]!),
+                          ),
                           child: Row(
                             children: [
-                              const Icon(Icons.description, color: AppColors.primary),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Test Report Available',
-                                style: AppTextStyles.body.copyWith(color: AppColors.primary),
+                              const Icon(Icons.check_circle, color: Colors.green),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Test Report Available',
+                                      style: AppTextStyles.subtitle.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green[800],
+                                      ),
+                                    ),
+                                    if (_selectedTestReportFile != null)
+                                      Text(
+                                        _selectedTestReportFile!.path.split('/').last,
+                                        style: AppTextStyles.caption,
+                                      ),
+                                    if (_selectedTestReportUrl != null)
+                                      Text(
+                                        _selectedTestReportUrl!,
+                                        style: AppTextStyles.caption,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
                         ),
+                      ],
                     ],
                   ),
                 ),
               ),
 
-              // Buttons
-              Padding(
-                padding: const EdgeInsets.only(top: 16),
+              // Action buttons
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                  border: Border(
+                    top: BorderSide(color: Colors.grey[300]!),
+                  ),
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    TextButton(
+                    TextButton.icon(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Edit'),
+                      icon: const Icon(Icons.edit),
+                      label: const Text('Edit'),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
+                    const SizedBox(width: 16),
+                    ElevatedButton.icon(
                       onPressed: () {
                         Navigator.pop(context);
                         _saveProduct(context);
                       },
+                      label: Text(widget.product != null ? 'Update' : 'Save'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                      child: Text(widget.product != null ? 'Update' : 'Save'),
                     ),
                   ],
                 ),
@@ -494,6 +621,54 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: AppTextStyles.subtitle.copyWith(
+        fontWeight: FontWeight.bold,
+        fontSize: 16,
+      ),
+    );
+  }
+
+  Widget _buildDetailItem(String label, String value, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 18, color: AppColors.primary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: AppTextStyles.caption.copyWith(
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value.isEmpty ? 'N/A' : value,
+                  style: AppTextStyles.body,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

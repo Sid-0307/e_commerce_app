@@ -3,11 +3,12 @@ class UserModel {
   final String email;
   final String name;
   final String phoneNumber;
-  final String countryCode;  // Added separate country code field
+  final String countryCode;
   final String countryISOCode;
   final String userType;
   final String? address;
   final String? aboutUs;
+  final List<String> hsCodePreferences;  // List of HS code preferences
 
   UserModel({
     required this.uid,
@@ -15,21 +16,23 @@ class UserModel {
     required this.name,
     required this.userType,
     this.phoneNumber = '',
-    this.countryCode = '+91',  // Default to India country code
+    this.countryCode = '+91',
     this.countryISOCode = 'IN',
     this.address = '',
     this.aboutUs = '',
+    this.hsCodePreferences = const [],  // Default empty list
   });
 
   UserModel copyWith({
     String? name,
     String? email,
     String? phoneNumber,
-    String? countryCode,  // Added to copyWith
+    String? countryCode,
     String? countryISOCode,
     String? userType,
     String? address,
     String? aboutUs,
+    List<String>? hsCodePreferences,
   }) {
     return UserModel(
       uid: this.uid,
@@ -37,10 +40,11 @@ class UserModel {
       name: name ?? this.name,
       userType: userType ?? this.userType,
       phoneNumber: phoneNumber ?? this.phoneNumber,
-      countryCode: countryCode ?? this.countryCode,  // Added to constructor
+      countryCode: countryCode ?? this.countryCode,
       countryISOCode: countryISOCode ?? this.countryISOCode,
       address: address ?? this.address,
       aboutUs: aboutUs ?? this.aboutUs,
+      hsCodePreferences: hsCodePreferences ?? this.hsCodePreferences,
     );
   }
 
@@ -51,10 +55,11 @@ class UserModel {
       'name': name,
       'userType': userType,
       'phoneNumber': phoneNumber,
-      'countryCode': countryCode,  // Added to map
-      'countryISOCode':countryISOCode,
+      'countryCode': countryCode,
+      'countryISOCode': countryISOCode,
       'address': address,
       'aboutUs': aboutUs,
+      'hsCodePreferences': hsCodePreferences,  // List is directly serializable
     };
   }
 
@@ -63,12 +68,15 @@ class UserModel {
       uid: documentId,
       email: map['email'] ?? '',
       name: map['name'] ?? '',
-      userType: map['userType'] ?? 'Buyer',  // Default to 'Buyer' to match dropdown
+      userType: map['userType'] ?? 'Buyer',
       phoneNumber: map['phoneNumber'] ?? '',
-      countryCode: map['countryCode'] ?? '+91',  // Added with default
-      countryISOCode:map['countryISOCode'] ?? 'IN',
+      countryCode: map['countryCode'] ?? '+91',
+      countryISOCode: map['countryISOCode'] ?? 'IN',
       address: map['address'] ?? '',
       aboutUs: map['aboutUs'] ?? '',
+      hsCodePreferences: map['hsCodePreferences'] != null
+          ? List<String>.from(map['hsCodePreferences'])
+          : [],  // Convert to List<String> or provide empty list
     );
   }
 
