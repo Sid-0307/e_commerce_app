@@ -22,7 +22,7 @@ class Product {
   final bool? buyerInspection;
   final Timestamp createdAt;
   final Timestamp updatedAt;
-  final bool verified;
+  final String verification;
 
   Product({
     required this.id,
@@ -45,7 +45,7 @@ class Product {
     this.buyerInspection,
     required this.createdAt,
     required this.updatedAt,
-    required this.verified,
+    required this.verification,
   });
 
   // Helper method to format HS code and product together
@@ -78,7 +78,7 @@ class Product {
       buyerInspection: data['buyerInspection'],
       createdAt: data['createdAt'] ?? Timestamp.now(),
       updatedAt: data['updatedAt'] ?? Timestamp.now(),
-      verified: data['verified'] ?? false,
+      verification: data['verification'],
     );
   }
 
@@ -104,7 +104,7 @@ class Product {
       'buyerInspection': buyerInspection,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
-      'verified': verified,
+      'verification': verification,
     };
   }
 
@@ -130,7 +130,7 @@ class Product {
     bool? buyerInspection,
     Timestamp? createdAt,
     Timestamp? updatedAt,
-    bool? verified,
+    String? verification,
   }) {
     return Product(
       id: id ?? this.id,
@@ -153,7 +153,7 @@ class Product {
       buyerInspection: buyerInspection ?? this.buyerInspection,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      verified: verified ?? this.verified,
+      verification: verification ?? this.verification,
     );
   }
 }

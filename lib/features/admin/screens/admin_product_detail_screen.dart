@@ -1,74 +1,36 @@
-// lib/features/buyer/screens/product_detail_screen.dart
-import 'dart:io';
-
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:uuid/uuid.dart';
+import 'dart:io';
+
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
-import '../../../core/models/user_model.dart';
 import '../../../core/widgets/custom_button.dart';
+import '../../buyer/widgets/pdf_viewer_tab.dart';
 import '../../vendor/models/product_model.dart';
-import '../services/notification_service.dart';
-import '../widgets/pdf_viewer_tab.dart';
 
-class ProductDetailScreen extends StatefulWidget {
+class AdminProductDetailScreen extends StatefulWidget {
   final Product product;
+  final bool isPending;
 
-  const ProductDetailScreen({Key? key, required this.product}) : super(key: key);
+  const AdminProductDetailScreen({
+    Key? key,
+    required this.product,
+    this.isPending = false,
+  }) : super(key: key);
 
   @override
-  State<ProductDetailScreen> createState() => _ProductDetailScreenState();
+  State<AdminProductDetailScreen> createState() => _AdminProductDetailScreenState();
 }
 
-class _ProductDetailScreenState extends State<ProductDetailScreen> {
-  final TextEditingController _quantityController = TextEditingController();
+class _AdminProductDetailScreenState extends State<AdminProductDetailScreen> {
   bool _isLoading = false;
-  UserModel? _currentUser;
-  final _uuid = Uuid();
 
   @override
   void initState() {
     super.initState();
-    _loadCurrentUser();
-    _ensureNotificationPermissions();
-  }
-
-  @override
-  void dispose() {
-    _quantityController.dispose();
-    super.dispose();
-  }
-
-  // Ensure notification permissions are requested
-  Future<void> _ensureNotificationPermissions() async {
-    try {
-      await NotificationService.initialize();
-    } catch (e) {
-      debugPrint('Error initializing notifications: $e');
-    }
-  }
-
-  Future<void> _loadCurrentUser() async {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId != null) {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .get();
-
-      if (userDoc.exists) {
-        setState(() {
-          _currentUser = UserModel.fromMap(
-              userDoc.data() as Map<String, dynamic>, userId);
-        });
-      }
-    }
   }
 
   Future<void> _openUrl(String? url) async {
@@ -159,171 +121,81 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 
-  // Send request to seller
-  Future<void> _sendRequestToSeller(String quantity) async {
-    if (_currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You need to be logged in to send a request'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
+  Future<void> _approveProduct() async {
+    if (!mounted) return;
 
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Get seller data to send notification
-      final sellerDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .where('email', isEqualTo: widget.product.email)
-          .get();
-
-      String? sellerId;
-      String? sellerFCMToken;
-      String sellerName = "Seller"; // Default name
-
-      if (sellerDoc.docs.isNotEmpty) {
-        sellerId = sellerDoc.docs.first.id;
-        sellerFCMToken = sellerDoc.docs.first.data()['fcmToken'];
-        sellerName = sellerDoc.docs.first.data()['name'] ?? "Seller";
-        debugPrint("Seller found: ID=$sellerId, Name=$sellerName");
-      } else {
-        debugPrint("Seller not found with email: ${widget.product.email}");
-      }
-
-      // Create a unique request ID
-      final requestId = _uuid.v4();
-
-      // Create request data
-      final timestamp = Timestamp.now();
-      final expiryDate = Timestamp.fromDate(
-          DateTime.now().add(const Duration(days: 10))
-      );
-
-      final requestData = {
-        "requestId": requestId,
-        'productId': widget.product.id,
-        'productName': widget.product.name,
-        'buyerId': _currentUser!.uid,
-        'buyerName': _currentUser!.name,
-        'buyerPhone': _currentUser!.completePhoneNumber,
-        'sellerId': sellerId,
-        'sellerEmail': widget.product.email,
-        'quantity': quantity,
-        'requestDate': timestamp,
-        'expiryDate': expiryDate,
-        'status': 'Awaiting Seller Contact',
-        'isActive': true,
-      };
-
-      debugPrint("Creating request with data: $requestData");
-
-      // Add to Firestore - both in requests collection and in user-specific subcollections
-      final requestRef = await FirebaseFirestore.instance
-          .collection('requests')
-          .add(requestData);
-
-      // Add reference to buyer's requests
       await FirebaseFirestore.instance
-          .collection('users')
-          .doc(_currentUser!.uid)
-          .collection('buyerRequests')
-          .doc(requestRef.id)
-          .set({
-        ...requestData,
-        'requestId': requestRef.id,
-      });
+          .collection('products')
+          .doc(widget.product.id)
+          .update({'verification': 'Approved'});
 
-      // Add reference to seller's requests if seller exists
-      if (sellerId != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(sellerId)
-            .collection('sellerRequests')
-            .doc(requestRef.id)
-            .set({
-          ...requestData,
-          'requestId': requestRef.id,
-          'sellerExpiryDate': Timestamp.fromDate(
-              DateTime.now().add(const Duration(days: 3))
-          ),
-        });
-        debugPrint("Added request to seller's collection");
-      }
+      if (!mounted) return;
 
-      // Send push notification to seller if FCM token is available
-      if (sellerFCMToken != null && sellerFCMToken.isNotEmpty) {
-        try {
-          await NotificationService.sendPushNotification(
-            token: sellerFCMToken,
-            title: 'New Product Request',
-            body: 'A buyer has requested your product ${widget.product.name} for quantity $quantity',
-            data: {
-              'type': 'new_request',
-              'requestId': requestRef.id,
-              'productId': widget.product.id,
-              'productName': widget.product.name,
-              'quantity': quantity,
-              'buyerName': _currentUser!.name,
-            },
-          );
-          debugPrint("Push notification sent to seller successfully");
-        } catch (e) {
-          debugPrint("Error sending notification to seller: $e");
-          // Continue with process even if notification fails
-        }
-      } else {
-        debugPrint("Seller FCM token not available - notification not sent");
-      }
-
-      // Send confirmation to buyer
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Request sent successfully! The seller will contact you soon.'),
-          backgroundColor: Colors.green,
-        ),
+        const SnackBar(content: Text('Product approved successfully')),
       );
 
-      // Also send push notification to buyer for confirmation
-      final buyerToken = await FirebaseMessaging.instance.getToken();
-      if (buyerToken != null && buyerToken.isNotEmpty) {
-        try {
-          await NotificationService.sendPushNotification(
-            token: buyerToken,
-            title: 'Request Sent',
-            body: 'Your request for ${widget.product.name} has been sent to the seller. Expect contact soon!',
-            data: {
-              'type': 'request_confirmation',
-              'requestId': requestRef.id,
-              'productId': widget.product.id,
-            },
-          );
-          debugPrint("Confirmation notification sent to buyer");
-        } catch (e) {
-          debugPrint("Error sending confirmation to buyer: $e");
-          // Non-critical, so we can continue
-        }
+      // Return to previous screen after successful approval
+      if (context.mounted) {
+        Navigator.pop(context, 'approved');
       }
 
     } catch (e) {
-      debugPrint("Error in _sendRequestToSeller: $e");
+      if (!mounted) return;
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to send request: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error approving product: $e')),
+      );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _rejectProduct() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('products')
+          .doc(widget.product.id)
+          .update({'verification': 'Rejected'});
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Product rejected')),
+      );
+
+      // Return to previous screen after successful rejection
+      if (context.mounted) {
+        Navigator.pop(context, 'rejected');
+      }
+
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error rejecting product: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -331,7 +203,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Product Details'),
+        title: Text('Product Review'),
         elevation: 0,
         backgroundColor: Colors.transparent,
         foregroundColor: AppColors.textPrimary,
@@ -349,12 +221,48 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Verification status badge
+                  _buildVerificationBadge(),
+                  const SizedBox(height: 8),
+
                   // Product name
                   Text(
                     widget.product.name,
                     style: AppTextStyles.heading1,
                   ),
                   const SizedBox(height: 8),
+
+                  // Seller information
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.store, color: AppColors.textSecondary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Seller Information',
+                                style: AppTextStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                'Email: ${widget.product.email}',
+                                style: AppTextStyles.body,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
                   // Price
                   Row(
@@ -395,6 +303,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     style: AppTextStyles.subtitle.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
+                  _buildSpecificationItem('HS Code', widget.product.getHsCodeWithProduct()),
                   _buildSpecificationItem('Country of Origin', widget.product.countryOfOrigin),
                   _buildSpecificationItem('Shipping Terms', widget.product.shippingTerm),
                   _buildSpecificationItem('Payment Terms', widget.product.paymentTerms),
@@ -479,65 +388,90 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       ],
                     ),
 
-                  // Contact Supplier Button
-                  CustomButton(
-                    text: _isLoading ? 'Sending...' : 'Contact Supplier',
-                    onPressed: _isLoading
-                        ? (){}
-                        : () {
-                      // Show quantity input dialog
-                      showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Contact Supplier'),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('Interested in "${widget.product.name}"?'),
-                              const SizedBox(height: 16),
-                              TextField(
-                                controller: _quantityController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Quantity Required',
-                                  border: OutlineInputBorder(),
-                                ),
-                                keyboardType: TextInputType.number,
-                              ),
-                            ],
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Cancel'),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                final quantity = _quantityController.text.trim();
-                                if (quantity.isEmpty) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Please enter a quantity'),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                  return;
-                                }
-                                Navigator.pop(context);
-                                _sendRequestToSeller(quantity);
-                              },
-                              child: const Text('Send Request'),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+                  // Admin action buttons - only show if pending
+                  if (widget.isPending)
+                    _buildAdminActionButtons(),
                 ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildVerificationBadge() {
+    Color badgeColor;
+    String statusText;
+    IconData statusIcon;
+
+    switch (widget.product.verification) {
+      case 'Approved':
+        badgeColor = Colors.green;
+        statusText = 'Approved';
+        statusIcon = Icons.check_circle;
+        break;
+      case 'Rejected':
+        badgeColor = Colors.red;
+        statusText = 'Rejected';
+        statusIcon = Icons.cancel;
+        break;
+      default:
+        badgeColor = Colors.orange;
+        statusText = 'Pending Approval';
+        statusIcon = Icons.pending;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: badgeColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: badgeColor.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            statusIcon,
+            size: 16,
+            color: badgeColor,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            statusText,
+            style: TextStyle(
+              color: badgeColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdminActionButtons() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: CustomButton(
+                text: _isLoading ? 'Approving...' : 'Approve Product',
+                onPressed: _isLoading ? (){} : _approveProduct,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: CustomButton(
+                text: _isLoading ? 'Rejecting...' : 'Reject Product',
+                onPressed: _isLoading ? (){} : _rejectProduct,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

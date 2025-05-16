@@ -51,6 +51,7 @@ import 'package:flutter/material.dart';
     }
 
     void _filterProducts(String query) {
+      if (_allProducts.isEmpty) return;
       setState(() {
         _searchQuery = query;
         _showingSelectedProduct = false;
@@ -148,7 +149,7 @@ import 'package:flutter/material.dart';
                       return Product.fromFirestore(doc);
                     }).toList();
 
-                    if (_searchQuery.isEmpty && !_showingSelectedProduct) {
+                    if (_filteredProducts.isEmpty || (!_showingSelectedProduct && _searchQuery.isEmpty)) {
                       _filteredProducts = _allProducts;
                     }
 
@@ -351,7 +352,7 @@ import 'package:flutter/material.dart';
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                            if (product.verified == true)
+                            if (product.verification == "Approved")
                               Padding(
                                 padding: const EdgeInsets.only(left: 4.0),
                                 child: Icon(
@@ -360,6 +361,24 @@ import 'package:flutter/material.dart';
                                   color: Colors.green,
                                 ),
                               ),
+                              if(product.verification == "Pending")
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 4.0),
+                                  child: Icon(
+                                    Icons.timer_outlined,
+                                    size: 16,
+                                    color: Colors.orange,
+                                  ),
+                                ),
+                              if(product.verification == "Rejected")
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 4.0),
+                                  child: Icon(
+                                    Icons.error_outline,
+                                    size: 16,
+                                    color: Colors.red,
+                                  ),
+                                ),
                           ],
                         ),
                           const SizedBox(height: 4),

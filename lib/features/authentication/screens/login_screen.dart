@@ -1,4 +1,5 @@
 import 'package:another_flushbar/flushbar.dart';
+import 'package:e_commerce_app/features/admin/screens/admin_home_screen.dart';
 import 'package:e_commerce_app/features/vendor/screens/vendor_home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -76,6 +77,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const BuyerHomeScreen(),
+                  ),
+                );
+              }
+              else if(user.userType=='Admin'){
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AdminHomeScreen(),
                   ),
                 );
               }
