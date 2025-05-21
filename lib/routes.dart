@@ -1,6 +1,7 @@
 // lib/routes.dart
 
 import 'package:e_commerce_app/features/admin/screens/admin_home_screen.dart';
+import 'package:e_commerce_app/features/authentication/screens/splash_screen.dart';
 import 'package:flutter/material.dart';
 
 // Import all screens that need routes
@@ -28,6 +29,7 @@ class AppRouter {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case AppRoutes.initial:
+        return MaterialPageRoute(builder: (_) => const SplashScreen());
       case AppRoutes.login:
         return MaterialPageRoute(builder: (_) => const LoginScreen());
 

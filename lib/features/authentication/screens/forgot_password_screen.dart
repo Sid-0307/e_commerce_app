@@ -1,4 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:another_flushbar/flushbar.dart';
 import '../../../core/background_decorations.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
@@ -28,6 +30,46 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
+  void _showNotification({
+    required String title,
+    required String message,
+    Color? backgroundColor,
+    IconData? icon,
+    int durationInSeconds = 3,
+  }) {
+    // Always dismiss keyboard
+    FocusScope.of(context).unfocus();
+
+    // Show notification
+    Flushbar(
+      title: title,
+      messageText: Text(
+        message,
+        style: const TextStyle(
+          fontSize: 12,
+          color: Colors.white70,
+        ),
+      ),
+      duration: Duration(seconds: durationInSeconds),
+      backgroundColor: backgroundColor ?? AppColors.primary,
+      borderRadius: BorderRadius.circular(8),
+      margin: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(16),
+      flushbarPosition: FlushbarPosition.TOP,
+      icon: Icon(
+        icon ?? Icons.info_outline,
+        color: Colors.white,
+      ),
+      boxShadows: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.2),
+          offset: const Offset(0, 5),
+          blurRadius: 8.0,
+        )
+      ],
+    ).show(context);
+  }
+
   Future<void> _resetPassword() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -41,11 +83,26 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             _emailSent = true;
           });
         }
-      } catch (e) {
+      }
+      catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to send reset email: ${e.toString()}')),
-          );
+          final errorMessage = _authService.getMessageFromErrorCode(e);
+          if(e is FirebaseAuthException && e.code == 'network-request-failed') {
+            _showNotification(
+              title: 'Login Failed',
+              message: errorMessage,
+              backgroundColor: Colors.red.shade700,
+              icon: Icons.signal_wifi_off,
+            );
+          }
+          else {
+            _showNotification(
+              title: 'Password Reset Failed',
+              message: errorMessage,
+              backgroundColor: Colors.red.shade700,
+              icon: Icons.error_outline,
+            );
+          }
           setState(() {
             _isLoading = false;
           });
@@ -65,24 +122,25 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             child: Center(
               child: Column(
                 children: [
-                  // Padding(
-                  //   padding: const EdgeInsets.symmetric(vertical: 10.0),
-                  //   child: Center(
-                  //     child: LogoWidget(),
-                  //   ),
-                  // ),
                   AuthCard(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const SizedBox(height: 10),
-                        const LogoWidget(),
-                        const SizedBox(height: 30),
                         Text(
-                          'Forgot Password',
-                          style: AppTextStyles.heading,
+                          'MILLIG',
+                          style: AppTextStyles.appName.copyWith(
+                            foreground: Paint()..color = AppColors.primary,
+                            shadows: [
+                              Shadow(
+                                blurRadius: 10,
+                                color: AppColors.tertiary.withOpacity(0.6),
+                                offset: Offset(0, 0),
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
                         if (_emailSent)
                           Column(
                             children: [
@@ -128,6 +186,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                   labelText: 'Email',
                                   controller: _emailController,
                                   keyboardType: TextInputType.emailAddress,
+                                  prefixIcon: const Icon(Icons.email_outlined),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
                                       return 'Please enter your email';

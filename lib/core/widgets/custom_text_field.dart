@@ -7,6 +7,8 @@ class CustomTextField extends StatelessWidget {
   final TextEditingController controller;
   final String? Function(String?)? validator;
   final TextInputType keyboardType;
+  final Icon? prefixIcon; // Added optional prefix icon
+  final Color? prefixIconColor; // Added optional prefix icon color
 
   const CustomTextField({
     super.key,
@@ -15,6 +17,8 @@ class CustomTextField extends StatelessWidget {
     required this.controller,
     this.validator,
     this.keyboardType = TextInputType.text,
+    this.prefixIcon, // Adding to constructor
+    this.prefixIconColor, // Adding to constructor
   });
 
   @override
@@ -33,7 +37,22 @@ class CustomTextField extends StatelessWidget {
         floatingLabelBehavior: FloatingLabelBehavior.auto,
         filled: true,
         fillColor: AppColors.tertiary.withOpacity(0.15),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: EdgeInsets.symmetric(
+            horizontal: prefixIcon != null ? 8 : 16,
+            vertical: 16
+        ),
+        prefixIcon: prefixIcon != null
+            ? Padding(
+          padding: const EdgeInsets.only(left: 12, right: 8),
+          child: IconTheme(
+            data: IconThemeData(
+              color: prefixIconColor ?? AppColors.primary.withOpacity(0.7),
+              size: 20,
+            ),
+            child: prefixIcon!,
+          ),
+        )
+            : null,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide.none, // Dark border

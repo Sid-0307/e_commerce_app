@@ -10,6 +10,10 @@ import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+
+import '../../authentication/screens/login_screen.dart';
+import '../../authentication/services/auth_service.dart';
+
 class ProfileTab extends StatefulWidget {
   const ProfileTab({Key? key}) : super(key: key);
 
@@ -82,8 +86,17 @@ class _ProfileTabState extends State<ProfileTab> {
       // Clear the user in the provider
       Provider.of<UserProvider>(context, listen: false).clearCurrentUser();
 
+      final FirebaseAuth _auth = FirebaseAuth.instance;
+      // Then sign out through the auth service
+      await _auth.signOut();
+
       // Navigate to login screen
-      Navigator.of(context).pushReplacementNamed('/login');
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => const LoginScreen(),
+        ),
+            (route) => false, // Remove all previous routes
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error signing out: $e')),

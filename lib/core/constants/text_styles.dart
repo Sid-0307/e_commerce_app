@@ -9,6 +9,12 @@ class AppTextStyles {
     fontWeight: FontWeight.bold,
   );
 
+  static TextStyle appName = GoogleFonts.sairaStencilOne(
+    color: AppColors.primary,
+    fontSize: 50,
+    // fontWeight: FontWeight.,
+  );
+
   static TextStyle subheading = GoogleFonts.lato(
     color: AppColors.primary,
     fontSize: 18,

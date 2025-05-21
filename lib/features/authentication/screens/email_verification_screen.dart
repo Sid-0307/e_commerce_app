@@ -147,29 +147,38 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const LogoWidget(),
                         const SizedBox(height: 16),
                         Text(
-                          'Verify Your Email',
-                          style: AppTextStyles.heading,
+                          'MILLIG',
+                          style: AppTextStyles.appName.copyWith(
+                            foreground: Paint()..color = AppColors.primary,
+                            shadows: [
+                              Shadow(
+                                blurRadius: 10,
+                                color: AppColors.tertiary.withOpacity(0.6),
+                                offset: Offset(0, 0),
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 8),
                         const Icon(
                           Icons.email_outlined,
-                          size: 64,
+                          size: 50,
                           color: AppColors.primary,
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
                         Text(
                           'We sent a verification email to:',
                           style: AppTextStyles.subheading,
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 16),
                         Text(
                           widget.email,
                           style: AppTextStyles.subheading.copyWith(
                             fontWeight: FontWeight.bold,
+                            fontSize: 16
                           ),
                           textAlign: TextAlign.center,
                         ),

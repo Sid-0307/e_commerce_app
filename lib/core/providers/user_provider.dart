@@ -1,3 +1,4 @@
+import 'package:e_commerce_app/core/providers/user_persistence.dart';
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/firestore_service.dart';
@@ -30,6 +31,8 @@ class UserProvider extends ChangeNotifier {
         address: userData?['address'] ?? user.address,
         hsCodePreferences: userData?['hsCodePreferences'] ?? user.hsCodePreferences,
       );
+      await UserPersistence.saveUser(user);
+
     } catch (e) {
       // If Firestore fetch fails, use the provided user model
       _currentUser = user;
@@ -41,14 +44,26 @@ class UserProvider extends ChangeNotifier {
   }
 
   // Clear user data on logout
-  void clearCurrentUser() {
+  void clearCurrentUser() async{
     _currentUser = null;
+    await UserPersistence.clearUser();
     notifyListeners();
   }
 
+
+  Future<void> loadUserFromStorage() async {
+    // Load user from persistent storage if available
+    final user = await UserPersistence.getUser();
+    if (user != null) {
+      _currentUser = user;
+      notifyListeners();
+    }
+  }
+
   // Update local user data after profile edit
-  void updateLocalUserData(UserModel updatedUser) {
+  void updateLocalUserData(UserModel updatedUser) async {
     _currentUser = updatedUser;
+    await UserPersistence.saveUser(_currentUser!);
     notifyListeners();
   }
 }

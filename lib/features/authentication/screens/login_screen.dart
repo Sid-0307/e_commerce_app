@@ -33,6 +33,64 @@ class _LoginScreenState extends State<LoginScreen> {
   final _authService = AuthService();
   bool _isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    // Check if user is already logged in as soon as the login screen initializes
+    _checkCurrentUser();
+  }
+
+  Future<void> _checkCurrentUser() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      UserModel? user = await _authService.getCurrentUser();
+
+      if (user != null && mounted) {
+        // Set user in provider
+        await Provider.of<UserProvider>(context, listen: false).setCurrentUser(
+            user);
+
+        // Navigate based on user type
+        if (mounted) {
+          // Navigate based on user type
+          if (user.userType == 'Seller') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const VendorHomeScreen(),
+              ),
+            );
+          } else if (user.userType == 'Buyer') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const BuyerHomeScreen(),
+              ),
+            );
+          } else if (user.userType == 'Admin') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminHomeScreen(),
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      // Error checking user, but we don't need to show any message
+      // Just let the user continue to the login screen
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -41,11 +99,55 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // Show a sleek notification using Flushbar
+  void _showNotification({
+    required String title,
+    required String message,
+    Color? backgroundColor,
+    IconData? icon,
+    int durationInSeconds = 3,
+  }) {
+    // Always dismiss keyboard
+    FocusScope.of(context).unfocus();
+
+    // Show notification
+    Flushbar(
+      title: title,
+      messageText: Text(
+        message,
+        style: const TextStyle(
+          fontSize: 12, // 👈 Adjust this value as needed
+          color: Colors.white70,
+        ),
+      ),
+      duration: Duration(seconds: durationInSeconds),
+      backgroundColor: backgroundColor ?? AppColors.primary,
+      borderRadius: BorderRadius.circular(8),
+      margin: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(16),
+      flushbarPosition: FlushbarPosition.TOP,
+      icon: Icon(
+        icon ?? Icons.info_outline,
+        color: Colors.white,
+      ),
+      boxShadows: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.2),
+          offset: const Offset(0, 5),
+          blurRadius: 8.0,
+        )
+      ],
+    ).show(context);
+  }
+
+  // Parse Firebase error codes and return user-friendly messages
+
   Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
       });
+
       try {
         UserModel? user = await _authService.signIn(
           _emailController.text.trim(),
@@ -59,9 +161,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
         // Navigate based on user type
         if (user != null && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login successful')),
+          _showNotification(
+            title: 'Login Successsful',
+            message: 'Redirecting to your dashboard',
+            backgroundColor: Colors.green.shade700,
+            icon: Icons.check_circle,
           );
+
           Future.delayed(const Duration(seconds: 1), () {
             if (mounted) {
               // Check user type and redirect accordingly
@@ -79,8 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     builder: (context) => const BuyerHomeScreen(),
                   ),
                 );
-              }
-              else if(user.userType=='Admin'){
+              } else if (user.userType == 'Admin') {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -93,14 +198,32 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } catch (e) {
         if (mounted) {
-          String errorMessage = e.toString();
+          String errorMessage = AuthService().getMessageFromErrorCode(e);
 
-          // Check if the error is related to email verification
-          if (errorMessage.contains('verify your email')) {
-            _showVerificationDialog();
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Login failed: $errorMessage')),
+          // Special case for email verification
+          if (errorMessage == 'email-not-verified') {
+            // _showVerificationDialog()
+            _showNotification(
+              title: 'Email Not Verified',
+              message: 'Please check your inbox for the verification link',
+              backgroundColor: Colors.orange.shade800,
+              icon: Icons.mark_email_unread,
+              durationInSeconds: 3,
+            );
+          }else if(e is FirebaseAuthException && e.code == 'network-request-failed'){
+            _showNotification(
+              title: 'Login Failed',
+              message: errorMessage,
+              backgroundColor: Colors.red.shade700,
+              icon: Icons.signal_wifi_off,
+            );
+          }else
+           {
+            _showNotification(
+              title: 'Login Failed',
+              message: errorMessage,
+              backgroundColor: Colors.red.shade700,
+              icon: Icons.error_outline,
             );
           }
         }
@@ -113,74 +236,89 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     }
   }
-  void _showVerificationDialog() {
-    FocusScope.of(context).unfocus();
-    ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Email Not Verified: Please check your inbox for the verification link.')),
-      );
 
-    // Flushbar(
-    //   title: 'Email Not Verified',
-    //   message: 'Please check your inbox for the verification link.',
-    //   duration: Duration(seconds: 3),
-    //   backgroundColor: Colors.red,
-    //   flushbarPosition: FlushbarPosition.TOP,
-    // ).show(context);
+  // void _showVerificationDialog() {
+  // Future.delayed(Duration(milliseconds: 500), () {
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) => AlertDialog(
+  //       title: Text('Email Verification Required'),
+  //       content: Text('You need to verify your email before logging in. Would you like to resend the verification email?'),
+  //       actions: [
+  //         TextButton(
+  //           onPressed: () {
+  //             Navigator.of(context).pop();
+  //           },
+  //           child: Text('Cancel'),
+  //         ),
+  //         ElevatedButton(
+  //           onPressed: () {
+  //             Navigator.of(context).pop();
+  //             _resendVerificationEmail();
+  //           },
+  //           style: ElevatedButton.styleFrom(
+  //             backgroundColor: AppColors.primary,
+  //           ),
+  //           child: Text('Resend Email'),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // });
+  // }
 
-        // actions: [
-        //   TextButton(
-        //     onPressed: () {
-        //       Navigator.of(context).pop();
-        //       // Navigate to verification screen
-        //       Navigator.pushReplacement(
-        //         context,
-        //         MaterialPageRoute(
-        //           builder: (context) => EmailVerificationScreen(
-        //             email: _emailController.text.trim(),
-        //           ),
-        //         ),
-        //       );
-        //     },
-        //     child: const Text('Resend Email'),
-        //   ),
-        // ],
-  }
-
-  Future<void> _resendVerificationEmail() async {
-    try {
-      // First try to sign in to get the user authenticated
-      await _authService.signIn(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-      );
-
-      // Then send verification email
-      await _authService.sendEmailVerification();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Verification email sent')),
-        );
-
-        // Navigate to verification screen
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => EmailVerificationScreen(
-              email: _emailController.text.trim(),
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send verification email: ${e.toString()}')),
-        );
-      }
-    }
-  }
-
+  // Future<void> _resendVerificationEmail() async {
+  //   setState(() {
+  //     _isLoading = true;
+  //   });
+  //
+  //   try {
+  //     // First try to sign in to get the user authenticated
+  //     await _authService.signIn(
+  //       _emailController.text.trim(),
+  //       _passwordController.text.trim(),
+  //     );
+  //
+  //     // Then send verification email
+  //     await _authService.sendEmailVerification();
+  //
+  //     if (mounted) {
+  //       _showNotification(
+  //         title: 'Email Sent',
+  //         message: 'Verification email has been sent successfully. Please check your inbox.',
+  //         backgroundColor: Colors.green.shade700,
+  //         icon: Icons.email,
+  //       );
+  //
+  //       // Navigate to verification screen
+  //       Navigator.push(
+  //         context,
+  //         MaterialPageRoute(
+  //           builder: (context) => EmailVerificationScreen(
+  //             email: _emailController.text.trim(),
+  //           ),
+  //         ),
+  //       );
+  //     }
+  //   } catch (e) {
+  //     if (mounted) {
+  //       String errorMessage = _getMessageFromErrorCode(e);
+  //
+  //       _showNotification(
+  //         title: 'Verification Failed',
+  //         message: 'Failed to send verification email: $errorMessage',
+  //         backgroundColor: Colors.red.shade700,
+  //         icon: Icons.error_outline,
+  //       );
+  //     }
+  //   } finally {
+  //     if (mounted) {
+  //       setState(() {
+  //         _isLoading = false;
+  //       });
+  //     }
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -193,17 +331,24 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Only Logo outside the AuthCard
-                // Everything else inside the AuthCard
                 AuthCard(
                   child: Column(
                     children: [
-                      const LogoWidget(),
-                      const SizedBox(height: 24),
+                      // const LogoWidget(),
+                      const SizedBox(height: 16),
                       // Title inside the AuthCard
                       Text(
-                        'Log In',
-                        style: AppTextStyles.heading,
+                        'MILLIG',
+                        style: AppTextStyles.appName.copyWith(
+                          foreground: Paint()..color = AppColors.primary,
+                          shadows: [
+                            Shadow(
+                              blurRadius: 10,
+                              color: AppColors.tertiary.withOpacity(0.6),
+                              offset: Offset(0, 0),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 24),
                       // Form elements
@@ -216,6 +361,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               labelText: 'Email',
                               controller: _emailController,
                               keyboardType: TextInputType.emailAddress,
+                              prefixIcon: const Icon(Icons.email_outlined),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
                                   return 'Please enter your email';
@@ -230,6 +376,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             CustomTextField(
                               labelText: 'Password',
                               controller: _passwordController,
+                              prefixIcon: const Icon(Icons.lock_outlined),
                               obscureText: true,
                               validator: (value) {
                                 if (value == null || value.isEmpty) {

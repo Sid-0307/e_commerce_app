@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/models/user_model.dart';
+import '../../../core/providers/user_persistence.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -28,6 +29,14 @@ class AuthService {
 
       // Fetch user data from Firestore to get userType and other fields
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
+
+      UserModel currentuser = UserModel.fromMap(
+          userDoc.data() as Map<String, dynamic>,
+          user.uid
+      );
+
+      // Save user for persistence
+      await UserPersistence.saveUser(currentuser);
 
       if (userDoc.exists) {
         return UserModel.fromMap(userDoc.data()!, user.uid);
@@ -73,6 +82,28 @@ class AuthService {
     }
   }
 
+  Future<UserModel?> getCurrentUser() async {
+    try {
+      // Check if there's a logged-in user in SharedPreferences
+      UserModel? user = await UserPersistence.getUser();
+      if (user != null) {
+        // Verify with Firebase Auth current user
+        User? firebaseUser = _auth.currentUser;
+        if (firebaseUser != null && firebaseUser.uid == user.uid) {
+          // User is authenticated on Firebase and data is in local storage
+          return user;
+        } else {
+          // Mismatch or Firebase auth is gone, clear local data
+          await UserPersistence.clearUser();
+        }
+      }
+      return null;
+    } catch (e) {
+      await UserPersistence.clearUser();
+      return null;
+    }
+  }
+
   Future<void> sendEmailVerification() async {
     print("In sendEmail verification");
     final user = _auth.currentUser;
@@ -113,7 +144,49 @@ class AuthService {
     await _auth.signOut();
   }
 
+  String getMessageFromErrorCode(dynamic error) {
+    if (error is FirebaseAuthException) {
+      switch (error.code) {
+        case 'invalid-email':
+          return 'The email address is not valid.';
+        case 'user-disabled':
+          return 'This account has been disabled.';
+        case 'user-not-found':
+          return 'No account found with this email.';
+        case 'wrong-password':
+          return 'Incorrect password. Please try again or reset your password.';
+        case 'too-many-requests':
+          return 'Too many failed login attempts. Please try again later';
+        case 'network-request-failed':
+          return 'Please check your internet connection and try again.';
+        case 'email-already-in-use':
+          return 'This email is already registered.';
+        case 'operation-not-allowed':
+          return 'This sign-in method is not enabled. Please contact support.';
+        case 'weak-password':
+          return 'Password is too weak. Please choose a stronger password.';
+        case 'account-exists-with-different-credential':
+          return 'An account exists with a different sign-in method. Try another method.';
+        case 'invalid-credential':
+          return 'The login credentials are invalid. Please try again.';
+        case 'invalid-verification-code':
+          return 'Invalid verification code. Please try again.';
+        case 'invalid-verification-id':
+          return 'Invalid verification. Please request a new verification.';
+        default:
+          return 'Authentication failed: ${error.message}';
+      }
+    } else if (error.toString().contains('verify your email')) {
+      return 'email-not-verified';
+    }
+
+    return 'An unexpected error occurred. Please try again later.';
+  }
+
+
   User? get currentUser => _auth.currentUser;
+
+
 
   String _handleAuthException(FirebaseAuthException e) {
     switch (e.code) {

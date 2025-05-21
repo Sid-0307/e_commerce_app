@@ -43,7 +43,7 @@ class MyApp extends StatelessWidget {
           ChangeNotifierProvider(create: (context) => UserProvider()),
         ],
         child:MaterialApp(
-          initialRoute: AppRoutes.login,
+          initialRoute: AppRoutes.initial,
           onGenerateRoute: AppRouter.generateRoute,
           title: 'Auth App',
           debugShowCheckedModeBanner: false,

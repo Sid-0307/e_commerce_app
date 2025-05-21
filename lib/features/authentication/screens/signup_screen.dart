@@ -1,6 +1,8 @@
 import 'package:drop_down_search_field/drop_down_search_field.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:another_flushbar/flushbar.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/background_decorations.dart';
@@ -53,6 +55,47 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
+  // Function to show notifications using Flushbar
+  void _showNotification({
+    required String title,
+    required String message,
+    Color? backgroundColor,
+    IconData? icon,
+    int durationInSeconds = 3,
+  }) {
+    // Always dismiss keyboard
+    FocusScope.of(context).unfocus();
+
+    // Show notification
+    Flushbar(
+      title: title,
+      messageText: Text(
+        message,
+        style: const TextStyle(
+          fontSize: 12,
+          color: Colors.white70,
+        ),
+      ),
+      duration: Duration(seconds: durationInSeconds),
+      backgroundColor: backgroundColor ?? AppColors.primary,
+      borderRadius: BorderRadius.circular(8),
+      margin: const EdgeInsets.all(8),
+      padding: const EdgeInsets.fromLTRB(18,16,10,16),
+      flushbarPosition: FlushbarPosition.TOP,
+      icon: Icon(
+        icon ?? Icons.info_outline,
+        color: Colors.white,
+      ),
+      boxShadows: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.2),
+          offset: const Offset(0, 5),
+          blurRadius: 8.0,
+        )
+      ],
+    ).show(context);
+  }
+
   Future<void> _signup() async {
     if (_formKey.currentState!.validate() && _acceptedTerms) {
       setState(() {
@@ -62,9 +105,11 @@ class _SignupScreenState extends State<SignupScreen> {
         if (_phoneNumber.isEmpty) {
           setState(() {
             _phoneError = 'Please enter your phone number';
+            _isLoading = false;
           });
           return;
         }
+
         // Sign up the user with separate phone number and country code
         final user = await _authService.signUp(
           _emailController.text.trim(),
@@ -79,8 +124,12 @@ class _SignupScreenState extends State<SignupScreen> {
         // Send email verification
         if (mounted) {
           // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Account created! Please verify your email')),
+          _showNotification(
+            title: 'Success',
+            message: 'Account created! Please verify your email',
+            backgroundColor: Colors.green,
+            icon: Icons.check_circle_outline,
+            durationInSeconds: 3,
           );
 
           // Navigate to email verification screen
@@ -95,8 +144,40 @@ class _SignupScreenState extends State<SignupScreen> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Signup failed: ${e.toString()}')),
+          String errorMessage = AuthService().getMessageFromErrorCode(e);
+
+          // Set appropriate icon and color based on error type
+          IconData errorIcon;
+          Color errorColor;
+
+          if (e is FirebaseAuthException) {
+            // Network related errors
+            if (e.code == 'network-request-failed') {
+              errorIcon = Icons.signal_wifi_off;
+              errorColor = Colors.red.shade700;
+            }
+            // User input related errors
+            else if (['invalid-email', 'weak-password', 'email-already-in-use'].contains(e.code)) {
+              errorIcon = Icons.warning_amber_rounded;
+              errorColor = Colors.red.shade700;
+            }
+            // Authentication failures
+            else {
+              errorIcon = Icons.error_outline;
+              errorColor = Colors.red.shade700;
+            }
+          } else {
+            // Generic error
+            errorIcon = Icons.error_outline;
+            errorColor = Colors.red.shade700;
+          }
+
+          _showNotification(
+            title: 'Signup Failed',
+            message: errorMessage,
+            backgroundColor: errorColor,
+            icon: errorIcon,
+            durationInSeconds: 3,
           );
         }
       } finally {
@@ -106,6 +187,14 @@ class _SignupScreenState extends State<SignupScreen> {
           });
         }
       }
+    } else if (!_acceptedTerms) {
+      _showNotification(
+        title: 'Terms Required',
+        message: 'Please accept the terms and conditions to continue.',
+        backgroundColor: Colors.orangeAccent,
+        icon: Icons.gavel,
+        durationInSeconds: 3,
+      );
     }
   }
 
@@ -126,11 +215,20 @@ class _SignupScreenState extends State<SignupScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const LogoWidget(),
-                        const SizedBox(height: 16),
+                        // const LogoWidget(),
+                        const SizedBox(height: 8),
                         Text(
-                          'Sign Up',
-                          style: AppTextStyles.heading,
+                          'MILLIG',
+                          style: AppTextStyles.appName.copyWith(
+                            foreground: Paint()..color = AppColors.primary,
+                            shadows: [
+                              Shadow(
+                                blurRadius: 10,
+                                color: AppColors.tertiary.withOpacity(0.6),
+                                offset: Offset(0, 0),
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 16),
                         Form(
@@ -142,6 +240,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               CustomTextField(
                                 labelText: 'Name',
                                 controller: _nameController,
+                                prefixIcon: const Icon(Icons.person_outline),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Please enter your name';
@@ -154,6 +253,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                 labelText: 'Email',
                                 controller: _emailController,
                                 keyboardType: TextInputType.emailAddress,
+                                prefixIcon: const Icon(Icons.email_outlined),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Please enter your email';
@@ -214,6 +314,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                 labelText: 'Password',
                                 controller: _passwordController,
                                 obscureText: true,
+                                prefixIcon: const Icon(Icons.lock_outlined),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Please enter your password';
@@ -335,7 +436,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                   ? const Center(child: CircularProgressIndicator())
                                   : CustomButton(
                                 text: 'Create Account',
-                                onPressed: _acceptedTerms ? _signup : (){}, // Disable button if terms not accepted
+                                onPressed: _signup, // Now we handle the terms check inside the _signup method
                               ),
                             ],
                           ),
