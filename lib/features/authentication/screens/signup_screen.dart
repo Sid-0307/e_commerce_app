@@ -409,10 +409,102 @@ class _SignupScreenState extends State<SignupScreen> {
                                         Flexible(
                                           child: GestureDetector(
                                             onTap: () async {
-                                              final Uri url = Uri.parse('https://youtube.com');
-                                              if (await canLaunchUrl(url)) {
-                                                await launchUrl(url);
-                                              }
+                                              // final Uri url = Uri.parse('https://youtube.com');
+                                              // if (await canLaunchUrl(url)) {
+                                              //   await launchUrl(url);
+                                              // }
+                                              showDialog(
+                                                context: context,
+                                                builder: (
+                                                    BuildContext context) {
+                                                  return Dialog(
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius: BorderRadius
+                                                          .circular(12),
+                                                    ),
+                                                    elevation: 0,
+                                                    backgroundColor: Colors.transparent,
+                                                    child: Container(
+                                                      width: 150,
+                                                      padding: EdgeInsets.all(20),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.white,
+                                                        borderRadius: BorderRadius.circular(12),
+                                                        boxShadow: [
+                                                          BoxShadow(
+                                                            color: Colors.black26,
+                                                            blurRadius: 10,
+                                                            offset: Offset(
+                                                                0, 5),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      child: Column(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          Row(
+                                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                            children: [
+                                                              Text(
+                                                                'Terms and Conditions',
+                                                                style: TextStyle(
+                                                                  fontSize: 18,
+                                                                  fontWeight: FontWeight
+                                                                      .bold,
+                                                                ),
+                                                              ),
+                                                              InkWell(
+                                                                onTap: () =>
+                                                                    Navigator.of(context).pop(),
+                                                                child: Container(
+                                                                  padding: EdgeInsets
+                                                                      .all(4),
+                                                                  decoration: BoxDecoration(
+                                                                    color: Colors.grey.shade200,
+                                                                    shape: BoxShape.circle,
+                                                                  ),
+                                                                  child: Icon(
+                                                                    Icons.close,
+                                                                    size: 16,
+                                                                    color: Colors.grey.shade700,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                          SizedBox(height: 16),
+                                                          Container(
+                                                            height: 250,
+                                                            // Fixed height for the scrollable content
+                                                            // decoration: BoxDecoration(
+                                                            //   borderRadius: BorderRadius.circular(8),
+                                                            //   border: Border.all(
+                                                            //       color: Colors.grey.shade200),
+                                                            // ),
+                                                            child: SingleChildScrollView(
+                                                              physics: BouncingScrollPhysics(),
+                                                              child: Text(
+                                                                'Your terms and conditions text goes here. Nullam in dui mauris. Vivamus hendrerit arcu sed erat molestie vehicula. Sed auctor neque eu tellus rhoncus ut eleifend nibh porttitor. Ut in nulla enim.\n\n'
+                                                                    'Phasellus molestie magna non est bibendum non venenatis nisl tempor. Suspendisse dictum feugiat nisl ut dapibus. Mauris iaculis porttitor posuere. Praesent id metus massa, ut blandit odio.\n\n'
+                                                                    'Proin quis tortor orci. Etiam at risus et justo dignissim congue. Donec congue lacinia dui, a porttitor lectus condimentum laoreet. Nunc eu ullamcorper orci. Quisque eget odio ac lectus vestibulum faucibus eget in metus.\n\n'
+                                                                    'In pellentesque faucibus vestibulum. Nulla at nulla justo, eget luctus tortor. Nulla facilisi. Duis aliquet egestas purus in blandit. Curabitur vulputate, ligula lacinia scelerisque tempor, lacus lacus ornare ante, ac egestas est urna sit amet arcu.\n\n'
+                                                                    'Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Sed molestie augue sit amet leo consequat posuere.',
+                                                                style: TextStyle(
+                                                                  fontSize: 14,
+                                                                  color: Colors
+                                                                      .grey
+                                                                      .shade800,
+                                                                  height: 1.5,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                              );
                                             },
                                             child: Text(
                                               'Terms and Conditions',

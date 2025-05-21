@@ -64,9 +64,9 @@ class _BackgroundDecorationsState extends State<BackgroundDecorations> with Tick
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                AppColors.background.withOpacity(0.2),
+                AppColors.background.withOpacity(0.1),
+                AppColors.background.withOpacity(0.3),
                 AppColors.background.withOpacity(0.5),
-                AppColors.background.withOpacity(0.8),
               ],
             ),
           ),
