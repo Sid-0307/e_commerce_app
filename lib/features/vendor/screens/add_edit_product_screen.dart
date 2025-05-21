@@ -29,6 +29,7 @@ class AddEditProductScreen extends StatefulWidget {
 class _AddEditProductScreenState extends State<AddEditProductScreen> {
   final _formKey = GlobalKey<FormState>();
   final _storage = FirebaseStorage.instance;
+
   final _firestore = FirebaseFirestore.instance;
   final _uuid = Uuid();
   bool _isLoading = false;

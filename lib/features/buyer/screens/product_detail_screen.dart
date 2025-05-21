@@ -1,6 +1,7 @@
 // lib/features/buyer/screens/product_detail_screen.dart
 import 'dart:io';
 
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -159,6 +160,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 
+  Future<void> checkHealth() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    print("User irukanda ${user?.email}");
+
+    if (user == null) {
+      UserCredential userCredential = await FirebaseAuth.instance.signInAnonymously();
+      user = userCredential.user;
+      await user?.getIdToken(true);
+    }else{
+      await user.getIdToken(true);
+    }
+
+    // Now call the function after the user is definitely signed in
+    final HttpsCallable callable = FirebaseFunctions.instance.httpsCallable('checkHealth');
+    final result = await callable.call();
+    print("checkHealth? ${result.data}");
+  }
+
   // Send request to seller
   Future<void> _sendRequestToSeller(String quantity) async {
     if (_currentUser == null) {
@@ -176,19 +195,90 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     });
 
     try {
-      // Get seller data to send notification
+      // Check if user already has an active request for this product
+      final existingRequests = await FirebaseFirestore.instance
+          .collection('requests')
+          .where('productId', isEqualTo: widget.product.id)
+          .where('buyerId', isEqualTo: _currentUser!.uid)
+          .where('isActive', isEqualTo: true)
+          .get();
+
+      if (existingRequests.docs.isNotEmpty) {
+        // Find if any request is still valid (not expired)
+        final now = DateTime.now();
+        bool hasActiveRequest = false;
+
+        for (final doc in existingRequests.docs) {
+          final expiryTimestamp = doc.data()['expiryDate'] as Timestamp;
+          final expiryDate = expiryTimestamp.toDate();
+
+          if (expiryDate.isAfter(now)) {
+            hasActiveRequest = true;
+            break;
+          }
+        }
+
+        if (hasActiveRequest) {
+          // Show SweetAlert-like dialog for duplicate request
+          if (context.mounted) {
+            await showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  title: Column(
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.orange,
+                        size: 60,
+                      ),
+                      SizedBox(height: 10),
+                      Text('Request Already Exists'),
+                    ],
+                  ),
+                  content: Text(
+                    'You already have an active request for this product. Please wait until it expires before sending a new request.',
+                    textAlign: TextAlign.center,
+                  ),
+                  actionsAlignment: MainAxisAlignment.center,
+                  actions: [
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text('OK', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                );
+              },
+            );
+          }
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+        }
+      }
+
+      // Get seller data
       final sellerDoc = await FirebaseFirestore.instance
           .collection('users')
           .where('email', isEqualTo: widget.product.email)
           .get();
 
       String? sellerId;
-      String? sellerFCMToken;
       String sellerName = "Seller"; // Default name
 
       if (sellerDoc.docs.isNotEmpty) {
         sellerId = sellerDoc.docs.first.id;
-        sellerFCMToken = sellerDoc.docs.first.data()['fcmToken'];
         sellerName = sellerDoc.docs.first.data()['name'] ?? "Seller";
         debugPrint("Seller found: ID=$sellerId, Name=$sellerName");
       } else {
@@ -255,69 +345,106 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         debugPrint("Added request to seller's collection");
       }
 
-      // Send push notification to seller if FCM token is available
-      if (sellerFCMToken != null && sellerFCMToken.isNotEmpty) {
-        try {
-          await NotificationService.sendPushNotification(
-            token: sellerFCMToken,
-            title: 'New Product Request',
-            body: 'A buyer has requested your product ${widget.product.name} for quantity $quantity',
-            data: {
-              'type': 'new_request',
-              'requestId': requestRef.id,
-              'productId': widget.product.id,
-              'productName': widget.product.name,
-              'quantity': quantity,
-              'buyerName': _currentUser!.name,
-            },
-          );
-          debugPrint("Push notification sent to seller successfully");
-        } catch (e) {
-          debugPrint("Error sending notification to seller: $e");
-          // Continue with process even if notification fails
-        }
-      } else {
-        debugPrint("Seller FCM token not available - notification not sent");
+      // Show SweetAlert-like dialog for successful request
+      if (context.mounted) {
+        await showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              titlePadding: EdgeInsets.fromLTRB(24, 24, 24, 0),
+              contentPadding: EdgeInsets.fromLTRB(24, 10, 24, 0),
+              actionsPadding: EdgeInsets.only(bottom: 16),
+              title: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.check_circle_outline,
+                    color: Colors.green,
+                    size: 60,
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'Request Sent Successfully!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              content: Text(
+                'The seller will contact you soon',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16),
+              ),
+              actionsAlignment: MainAxisAlignment.center,
+              actions: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                  ),
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(
+                    'Great!',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
       }
-
-      // Send confirmation to buyer
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Request sent successfully! The seller will contact you soon.'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      // Also send push notification to buyer for confirmation
-      final buyerToken = await FirebaseMessaging.instance.getToken();
-      if (buyerToken != null && buyerToken.isNotEmpty) {
-        try {
-          await NotificationService.sendPushNotification(
-            token: buyerToken,
-            title: 'Request Sent',
-            body: 'Your request for ${widget.product.name} has been sent to the seller. Expect contact soon!',
-            data: {
-              'type': 'request_confirmation',
-              'requestId': requestRef.id,
-              'productId': widget.product.id,
-            },
-          );
-          debugPrint("Confirmation notification sent to buyer");
-        } catch (e) {
-          debugPrint("Error sending confirmation to buyer: $e");
-          // Non-critical, so we can continue
-        }
-      }
-
+      _quantityController.clear();
     } catch (e) {
       debugPrint("Error in _sendRequestToSeller: $e");
 
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to send request: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+        await showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              title: Column(
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    color: Colors.red,
+                    size: 60,
+                  ),
+                  SizedBox(height: 10),
+                  Text('Request Failed'),
+                ],
+              ),
+              content: Text(
+                'Failed to send request: ${e.toString()}',
+                textAlign: TextAlign.center,
+              ),
+              actionsAlignment: MainAxisAlignment.center,
+              actions: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                  ),
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('OK', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
         );
       }
     } finally {
@@ -524,6 +651,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 }
                                 Navigator.pop(context);
                                 _sendRequestToSeller(quantity);
+                                // checkHealth();
                               },
                               child: const Text('Send Request'),
                             ),

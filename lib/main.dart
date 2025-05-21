@@ -21,13 +21,14 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   // Initialize notifications
-  await NotificationService.initialize();
-
-  // Set up token refresh listener
-  NotificationService.setupTokenRefresh();
+  // await NotificationService.initialize();
+  //
+  // // Set up token refresh listener
+  // NotificationService.setupTokenRefresh();
 
   runApp(const MyApp());
 }

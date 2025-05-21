@@ -1,6 +1,7 @@
 // lib/features/buyer/screens/buyer_home_screen.dart
 import 'package:flutter/material.dart';
 import '../../../core/constants/colors.dart';
+import '../widgets/connection_tab.dart';
 import '../widgets/products_tab.dart';
 import '../widgets/profile_tab.dart';
 // import '../tabs/connections_tab.dart';
@@ -18,7 +19,7 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
 
   final List<Widget> _tabs = [
     const BuyerProductsTab(),
-    // const ConnectionsTab(),
+    const BuyerConnectionsTab(),
     // const BuyerMessagesTab(),
     const BuyerProfileTab(),
   ];
@@ -46,11 +47,11 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
             activeIcon: Icon(Icons.shopping_bag),
             label: 'Products',
           ),
-          // BottomNavigationBarItem(
-          //   icon: Icon(Icons.people_outline),
-          //   activeIcon: Icon(Icons.people),
-          //   label: 'Connections',
-          // ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.request_page_outlined), // Thin-lined version for inactive
+            activeIcon: Icon(Icons.request_page),    // Filled version for active
+            label: 'Requests',
+          ),
           // BottomNavigationBarItem(
           //   icon: Icon(Icons.message_outlined),
           //   activeIcon: Icon(Icons.message),
