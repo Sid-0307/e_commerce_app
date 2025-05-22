@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class UserModel {
   final String uid;
   final String email;
@@ -9,6 +11,9 @@ class UserModel {
   final String? address;
   final String? aboutUs;
   final List<String> hsCodePreferences;  // List of HS code preferences
+  final bool isPremium;
+  final String? premiumTransactionId;
+  final Timestamp? premiumPurchaseDate;
 
   UserModel({
     required this.uid,
@@ -21,6 +26,9 @@ class UserModel {
     this.address = '',
     this.aboutUs = '',
     this.hsCodePreferences = const [],  // Default empty list
+    this.isPremium = false,
+    this.premiumTransactionId='',
+    this.premiumPurchaseDate,
   });
 
   UserModel copyWith({
@@ -33,6 +41,9 @@ class UserModel {
     String? address,
     String? aboutUs,
     List<String>? hsCodePreferences,
+    bool? isPremium,
+    String? premiumTransactionId,
+    Timestamp? premiumPurchaseDate,
   }) {
     return UserModel(
       uid: this.uid,
@@ -45,6 +56,9 @@ class UserModel {
       address: address ?? this.address,
       aboutUs: aboutUs ?? this.aboutUs,
       hsCodePreferences: hsCodePreferences ?? this.hsCodePreferences,
+      isPremium: isPremium ?? this.isPremium,
+      premiumTransactionId: premiumTransactionId ?? this.premiumTransactionId,
+      premiumPurchaseDate: premiumPurchaseDate ?? this.premiumPurchaseDate,
     );
   }
 
@@ -60,6 +74,9 @@ class UserModel {
       'address': address,
       'aboutUs': aboutUs,
       'hsCodePreferences': hsCodePreferences,  // List is directly serializable
+      'isPremium':isPremium,
+      "premiumTransactionId":premiumTransactionId,
+      "premiumPurchaseDate":premiumPurchaseDate,
     };
   }
 
@@ -77,6 +94,9 @@ class UserModel {
       hsCodePreferences: map['hsCodePreferences'] != null
           ? List<String>.from(map['hsCodePreferences'])
           : [],  // Convert to List<String> or provide empty list
+      isPremium:map['isPremium']??false,
+      premiumTransactionId:map["premiumTransactionId"]??'',
+      premiumPurchaseDate:map["premiumPurchaseDate"]??null,
     );
   }
 

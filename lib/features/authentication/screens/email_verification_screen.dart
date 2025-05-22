@@ -1,6 +1,7 @@
 import 'dart:async';
+import 'package:e_commerce_app/core/widgets/auth_wrapper.dart';
 import 'package:flutter/material.dart';
-import '../../../core/background_decorations.dart';
+import '../../../core/widgets/background_decorations.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
 import '../../../core/widgets/custom_button.dart';
@@ -135,7 +136,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: BackgroundDecorations(
+      body: AuthWrapper(
         child: Center(
           child: SafeArea(
             child: SingleChildScrollView(
@@ -149,7 +150,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                       children: [
                         const SizedBox(height: 16),
                         Text(
-                          'MILLIG',
+                          'MLLIG',
                           style: AppTextStyles.appName.copyWith(
                             foreground: Paint()..color = AppColors.primary,
                             shadows: [

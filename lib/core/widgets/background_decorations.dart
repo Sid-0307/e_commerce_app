@@ -1,54 +1,82 @@
 import 'dart:math' as math;
 import 'package:e_commerce_app/core/constants/colors.dart';
 import 'package:flutter/material.dart';
-import 'package:simple_animations/simple_animations.dart';
+import 'package:simple_animations/animation_builder/custom_animation_builder.dart';
+import 'package:simple_animations/movie_tween/movie_tween.dart';
 
-class BackgroundDecorations extends StatefulWidget {
-  final Widget child;
+// Singleton to manage persistent animation controllers
+class BackgroundDecorations {
+  static final BackgroundDecorations _instance = BackgroundDecorations._internal();
+  factory BackgroundDecorations() => _instance;
+  BackgroundDecorations._internal();
 
-  const BackgroundDecorations({
-    super.key,
-    required this.child,
-  });
+  AnimationController? _blob1Controller;
+  AnimationController? _particlesController;
+  List<ParticleModel>? _particles;
+  bool _isInitialized = false;
 
-  @override
-  State<BackgroundDecorations> createState() => _BackgroundDecorationsState();
+  bool get isInitialized => _isInitialized;
+  AnimationController? get blob1Controller => _blob1Controller;
+  AnimationController? get particlesController => _particlesController;
+  List<ParticleModel>? get particles => _particles;
+
+  void initialize(TickerProvider vsync) {
+    if (!_isInitialized) {
+      _blob1Controller = AnimationController(
+        vsync: vsync,
+        duration: const Duration(seconds: 12),
+      )..repeat();
+
+      _particlesController = AnimationController(
+        vsync: vsync,
+        duration: const Duration(seconds: 30),
+      )..repeat();
+
+      _particles = List.generate(100, (index) => ParticleModel());
+      _isInitialized = true;
+    }
+  }
+
+  void dispose() {
+    _blob1Controller?.dispose();
+    _particlesController?.dispose();
+    _blob1Controller = null;
+    _particlesController = null;
+    _particles = null;
+    _isInitialized = false;
+  }
 }
 
-class _BackgroundDecorationsState extends State<BackgroundDecorations> with TickerProviderStateMixin {
-  late AnimationController _blob1Controller;
-  late AnimationController _particlesController;
+// Updated BackgroundDecorations using the singleton
+class BackgroundDecorationsState extends StatefulWidget {
+  const BackgroundDecorationsState({super.key});
 
-  final List<ParticleModel> particles = List.generate(200, (index) => ParticleModel());
+  @override
+  State<BackgroundDecorationsState> createState() => _BackgroundDecorationsState();
+}
+
+class _BackgroundDecorationsState extends State<BackgroundDecorationsState>
+    with TickerProviderStateMixin {
+  late BackgroundDecorations _manager;
 
   @override
   void initState() {
     super.initState();
-    _blob1Controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 12),
-    )..repeat();
-
-    _particlesController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 30),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _blob1Controller.dispose();
-    _particlesController.dispose();
-    super.dispose();
+    _manager = BackgroundDecorations();
+    _manager.initialize(this);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_manager.isInitialized) {
+      return const SizedBox.shrink();
+    }
+
     return Stack(
       fit: StackFit.expand,
       children: [
         // Floating particles
-        ...particles.map((particle) => _buildParticle(particle, context)),
+        ...(_manager.particles?.map((particle) => _buildParticle(particle, context)) ?? []),
 
         // Top blob
         Positioned(
@@ -57,6 +85,7 @@ class _BackgroundDecorationsState extends State<BackgroundDecorations> with Tick
           right: -100,
           child: _buildBlob1(),
         ),
+
         // Gradient overlay
         Container(
           decoration: BoxDecoration(
@@ -71,22 +100,19 @@ class _BackgroundDecorationsState extends State<BackgroundDecorations> with Tick
             ),
           ),
         ),
-
-        // Content
-        widget.child,
       ],
     );
   }
 
   Widget _buildBlob1() {
     return AnimatedBuilder(
-      animation: _blob1Controller,
+      animation: _manager.blob1Controller!,
       builder: (context, child) {
-        final value = _blob1Controller.value;
+        final value = _manager.blob1Controller!.value;
         final scale = 1.0 + 0.1 * math.sin(value * math.pi * 2);
 
         return Transform.translate(
-          offset: Offset(0,0),
+          offset: const Offset(0, 0),
           child: Transform.scale(
             scale: scale,
             child: Opacity(
@@ -118,10 +144,9 @@ class _BackgroundDecorationsState extends State<BackgroundDecorations> with Tick
     final screenHeight = MediaQuery.of(context).size.height;
 
     return AnimatedBuilder(
-      animation: _particlesController,
+      animation: _manager.particlesController!,
       builder: (context, child) {
-        // Calculate position with time-based animation
-        final progress = ((_particlesController.value + particle.initialProgress) % 1.0);
+        final progress = ((_manager.particlesController!.value + particle.initialProgress) % 1.0);
 
         return Positioned(
           left: screenWidth * (particle.x + 0.1 * math.sin(progress * math.pi * 2)),
@@ -151,8 +176,16 @@ class _BackgroundDecorationsState extends State<BackgroundDecorations> with Tick
       },
     );
   }
+
+  // Don't dispose the singleton controllers in individual widgets
+  @override
+  void dispose() {
+    // The singleton will manage its own lifecycle
+    super.dispose();
+  }
 }
 
+// Your ParticleModel class (keep as is)
 class ParticleModel {
   final double x;
   final double size;
@@ -162,9 +195,9 @@ class ParticleModel {
 
   ParticleModel()
       : x = math.Random().nextDouble(),
-        size = math.Random().nextDouble() * 4 + 2, // Size between 2-6
+        size = math.Random().nextDouble() * 4 + 2,
         color = _getRandomColor(),
-        opacity = 0.8, // Opacity between 0.1-0.3
+        opacity = 0.8,
         initialProgress = math.Random().nextDouble();
 
   static Color _getRandomColor() {
@@ -247,6 +280,6 @@ class AnimatedBackgroundDecorations extends StatelessWidget {
           ],
         );
       },
-      child:child,
+      // child:child,
     );
   }}

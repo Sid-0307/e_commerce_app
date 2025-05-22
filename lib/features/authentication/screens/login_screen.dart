@@ -1,10 +1,11 @@
 import 'package:another_flushbar/flushbar.dart';
+import 'package:e_commerce_app/core/widgets/auth_wrapper.dart';
 import 'package:e_commerce_app/features/admin/screens/admin_home_screen.dart';
 import 'package:e_commerce_app/features/vendor/screens/vendor_home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/background_decorations.dart';
+import '../../../core/widgets/background_decorations.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
 import '../../../core/models/user_model.dart';
@@ -199,7 +200,7 @@ class _LoginScreenState extends State<LoginScreen> {
       } catch (e) {
         if (mounted) {
           String errorMessage = AuthService().getMessageFromErrorCode(e);
-
+          print('Error code ${e}');
           // Special case for email verification
           if (errorMessage == 'email-not-verified') {
             // _showVerificationDialog()
@@ -325,7 +326,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
-      body: BackgroundDecorations(
+      body: AuthWrapper(
         child: Center(
           child: SingleChildScrollView(
             child: Column(
@@ -338,7 +339,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 16),
                       // Title inside the AuthCard
                       Text(
-                        'MILLIG',
+                        'MLLIG',
                         style: AppTextStyles.appName.copyWith(
                           foreground: Paint()..color = AppColors.primary,
                           shadows: [

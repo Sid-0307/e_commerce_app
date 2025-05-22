@@ -1,7 +1,8 @@
 import 'package:e_commerce_app/features/authentication/widgets/auth_card.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/background_decorations.dart';
+import '../../../core/widgets/auth_wrapper.dart';
+import '../../../core/widgets/background_decorations.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
 import '../../../core/providers/user_provider.dart';
@@ -116,7 +117,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: BackgroundDecorations(
+      resizeToAvoidBottomInset: false,
+      body: AuthWrapper(
         child: Center(
           child: AnimatedBuilder(
             animation: _controller,
@@ -136,7 +138,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                             children: [
                               // Logo or app name
                               Text(
-                                'MILLIG',
+                                'MLLIG',
                                 style: AppTextStyles.appName.copyWith(
                                   fontSize: 42,
                                   foreground: Paint()..color = AppColors.primary,

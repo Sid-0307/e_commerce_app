@@ -1,7 +1,8 @@
+import 'package:e_commerce_app/core/widgets/auth_wrapper.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:another_flushbar/flushbar.dart';
-import '../../../core/background_decorations.dart';
+import '../../../core/widgets/background_decorations.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
 import '../../../core/widgets/custom_button.dart';
@@ -116,7 +117,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
-      body: BackgroundDecorations(
+      body: AuthWrapper(
         child: Center(
           child: SingleChildScrollView(
             child: Center(
@@ -128,7 +129,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       children: [
                         const SizedBox(height: 10),
                         Text(
-                          'MILLIG',
+                          'MLLIG',
                           style: AppTextStyles.appName.copyWith(
                             foreground: Paint()..color = AppColors.primary,
                             shadows: [

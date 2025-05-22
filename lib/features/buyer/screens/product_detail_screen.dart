@@ -2,6 +2,7 @@
 import 'dart:io';
 
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:e_commerce_app/features/buyer/screens/upgrade_premium_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -15,6 +16,7 @@ import '../../../core/constants/text_styles.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../vendor/models/product_model.dart';
+import '../services/billing_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/pdf_viewer_tab.dart';
 
@@ -32,18 +34,29 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   bool _isLoading = false;
   UserModel? _currentUser;
   final _uuid = Uuid();
+  final BillingService _billingService = BillingService(); // Add this
 
   @override
   void initState() {
     super.initState();
     _loadCurrentUser();
     _ensureNotificationPermissions();
+    _initializeBilling(); // Add this
   }
 
   @override
   void dispose() {
     _quantityController.dispose();
     super.dispose();
+  }
+
+  // Add billing initialization
+  Future<void> _initializeBilling() async {
+    try {
+      await _billingService.initialize();
+    } catch (e) {
+      debugPrint('Error initializing billing: $e');
+    }
   }
 
   // Ensure notification permissions are requested
@@ -57,6 +70,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Future<void> _loadCurrentUser() async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
+    print("USER ID ${userId}");
     if (userId != null) {
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
@@ -67,6 +81,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         setState(() {
           _currentUser = UserModel.fromMap(
               userDoc.data() as Map<String, dynamic>, userId);
+          print("Current User ${_currentUser}");
         });
       }
     }
@@ -76,21 +91,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     if (url != null && url.isNotEmpty) {
       final Uri uri = Uri.parse(url);
       try {
-        // For PDF files, ensure they open in external application
         if (url.toLowerCase().endsWith('.pdf')) {
           await launchUrl(
             uri,
             mode: LaunchMode.externalApplication,
           );
         } else {
-          // For other URLs, allow options for in-app or external viewing
           await launchUrl(
             uri,
             mode: LaunchMode.platformDefault,
           );
         }
       } catch (e) {
-        // Show error dialog or snackbar for better user feedback
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -105,7 +117,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Future<void> _openPdfPreview(BuildContext context, String url) async {
     try {
-      // Show loading indicator
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -116,22 +127,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         },
       );
 
-      // Download the PDF file
       final http.Response response = await http.get(Uri.parse(url));
-
-      // Get temporary directory to store the PDF file
       final dir = await getTemporaryDirectory();
       final filename = url.split('/').last;
       final filePath = '${dir.path}/$filename';
 
-      // Write PDF bytes to file
       final file = File(filePath);
       await file.writeAsBytes(response.bodyBytes);
 
-      // Close loading dialog
       if (context.mounted) Navigator.pop(context);
 
-      // Navigate to PDF viewer page
       if (context.mounted) {
         Navigator.push(
           context,
@@ -145,10 +150,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         );
       }
     } catch (e) {
-      // Close loading dialog if open
       if (context.mounted) Navigator.pop(context);
 
-      // Show error message
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -172,14 +175,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       await user.getIdToken(true);
     }
 
-    // Now call the function after the user is definitely signed in
     final HttpsCallable callable = FirebaseFunctions.instance.httpsCallable('checkHealth');
     final result = await callable.call();
     print("checkHealth? ${result.data}");
   }
 
-  // Send request to seller
+  // Updated method with billing check
   Future<void> _sendRequestToSeller(String quantity) async {
+    print("Inside sendRequestToSeller ${_currentUser}");
     if (_currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -195,6 +198,33 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     });
 
     try {
+      // Check if user is premium
+      final isPremium = await _billingService.checkUserPremiumStatus();
+
+      if (!isPremium) {
+        // Check user's current request count
+        final requestCount = await _billingService.getUserRequestCount();
+
+        if (requestCount >= 3) {
+          setState(() {
+            _isLoading = false;
+          });
+
+          // Show upgrade premium bottom sheet
+          if (context.mounted) {
+            showUpgradePremiumBottomSheet(
+              context,
+              onPurchaseSuccess: () {
+                // After successful purchase, retry the request
+                Navigator.pop(context);
+                _sendRequestToSeller(quantity);
+              },
+            );
+          }
+          return;
+        }
+      }
+
       // Check if user already has an active request for this product
       final existingRequests = await FirebaseFirestore.instance
           .collection('requests')
@@ -204,7 +234,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           .get();
 
       if (existingRequests.docs.isNotEmpty) {
-        // Find if any request is still valid (not expired)
         final now = DateTime.now();
         bool hasActiveRequest = false;
 
@@ -219,7 +248,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         }
 
         if (hasActiveRequest) {
-          // Show SweetAlert-like dialog for duplicate request
           if (context.mounted) {
             await showDialog(
               context: context,
@@ -275,7 +303,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           .get();
 
       String? sellerId;
-      String sellerName = "Seller"; // Default name
+      String sellerName = "Seller";
 
       if (sellerDoc.docs.isNotEmpty) {
         sellerId = sellerDoc.docs.first.id;
@@ -285,10 +313,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         debugPrint("Seller not found with email: ${widget.product.email}");
       }
 
-      // Create a unique request ID
       final requestId = _uuid.v4();
-
-      // Create request data
       final timestamp = Timestamp.now();
       final expiryDate = Timestamp.fromDate(
           DateTime.now().add(const Duration(days: 10))
@@ -312,7 +337,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
       debugPrint("Creating request with data: $requestData");
 
-      // Add to Firestore - both in requests collection and in user-specific subcollections
       final requestRef = await FirebaseFirestore.instance
           .collection('requests')
           .add(requestData);
@@ -345,7 +369,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         debugPrint("Added request to seller's collection");
       }
 
-      // Show SweetAlert-like dialog for successful request
       if (context.mounted) {
         await showDialog(
           context: context,
