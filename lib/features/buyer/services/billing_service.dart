@@ -1,6 +1,7 @@
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'dart:async';
 
 class BillingService {
@@ -11,6 +12,13 @@ class BillingService {
   final InAppPurchase _inAppPurchase = InAppPurchase.instance;
   late StreamSubscription<List<PurchaseDetails>> _subscription;
 
+  // ADD THIS: Test mode flag - set to true for testing
+  static const bool isTestMode = true; // Change to false for production
+
+  // Callbacks for purchase success
+  VoidCallback? _onPurchaseSuccess;
+  Function(String)? _onPurchaseError;
+
   // Your product ID - must match what you set in Google Play Console
   static const String premiumProductId = 'premium_plan';
 
@@ -18,6 +26,11 @@ class BillingService {
   ProductDetails? _premiumProduct;
 
   Future<void> initialize() async {
+    if (isTestMode) {
+      print('BillingService: Running in TEST MODE');
+      return; // Skip real initialization in test mode
+    }
+
     // Check if billing is available
     final bool available = await _inAppPurchase.isAvailable();
     if (!available) {
@@ -48,7 +61,27 @@ class BillingService {
     }
   }
 
-  Future<bool> purchasePremium() async {
+  Future<bool> purchasePremium({
+    VoidCallback? onSuccess,
+    Function(String)? onError,
+  }) async {
+    // Store callbacks
+    _onPurchaseSuccess = onSuccess;
+    _onPurchaseError = onError;
+
+    // TEST MODE: Always simulate successful purchase
+    if (isTestMode) {
+      print('TEST MODE: Simulating successful purchase...');
+
+      // Simulate a delay like a real purchase
+      await Future.delayed(Duration(seconds: 2));
+
+      // Create a mock purchase details
+      await _simulateSuccessfulPurchase();
+      return true;
+    }
+
+    // PRODUCTION MODE: Real purchase flow
     if (_premiumProduct == null) {
       throw Exception('Premium product not available');
     }
@@ -58,13 +91,45 @@ class BillingService {
     );
 
     try {
-      final bool success = await _inAppPurchase.buyNonConsumable(
+      // Use buyConsumable instead of buyNonConsumable for testing
+      final bool success = await _inAppPurchase.buyConsumable(
         purchaseParam: purchaseParam,
       );
       return success;
     } catch (e) {
       print('Purchase error: $e');
+      _onPurchaseError?.call('Purchase failed: $e');
       return false;
+    }
+  }
+
+  // NEW METHOD: Simulate successful purchase for testing
+  Future<void> _simulateSuccessfulPurchase() async {
+    try {
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) {
+        _onPurchaseError?.call('User not logged in');
+        return;
+      }
+
+      // Update user's premium status in Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .update({
+        'isPremium': true,
+        'premiumPurchaseDate': Timestamp.now(),
+        'premiumTransactionId': 'TEST_TRANSACTION_${DateTime.now().millisecondsSinceEpoch}',
+      });
+
+      print('TEST MODE: Premium status updated successfully');
+
+      // Call success callback
+      _onPurchaseSuccess?.call();
+
+    } catch (e) {
+      print('TEST MODE: Error updating premium status: $e');
+      _onPurchaseError?.call('Error updating premium status: $e');
     }
   }
 
@@ -99,13 +164,19 @@ class BillingService {
       });
 
       print('Premium status updated successfully');
+
+      // Call success callback
+      _onPurchaseSuccess?.call();
+
     } catch (e) {
       print('Error updating premium status: $e');
+      _onPurchaseError?.call('Error updating premium status: $e');
     }
   }
 
   void _handlePurchaseError(PurchaseDetails purchase) {
     print('Purchase failed: ${purchase.error}');
+    _onPurchaseError?.call('Purchase failed: ${purchase.error?.message ?? 'Unknown error'}');
   }
 
   Future<bool> checkUserPremiumStatus() async {
@@ -147,9 +218,11 @@ class BillingService {
     }
   }
 
-  String get premiumProductPrice => _premiumProduct?.price ?? '₹100';
+  String get premiumProductPrice => isTestMode ? '₹100 (TEST)' : (_premiumProduct?.price ?? '₹100');
 
   void dispose() {
-    _subscription.cancel();
+    if (!isTestMode) {
+      _subscription.cancel();
+    }
   }
 }
