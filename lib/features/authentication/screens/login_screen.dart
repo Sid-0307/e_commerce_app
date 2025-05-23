@@ -325,7 +325,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.lightTertiary,
       body: AuthWrapper(
         child: Center(
           child: SingleChildScrollView(

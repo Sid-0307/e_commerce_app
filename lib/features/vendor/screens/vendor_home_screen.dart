@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/widgets/auth_wrapper.dart';
 import '../widgets/products_tab.dart';
 import '../widgets/requests_tab.dart';
 import '../widgets/profile_tab.dart';
@@ -25,13 +26,42 @@ class _VendorHomeScreenState extends State<VendorHomeScreen> {
     const ProfileTab(),
   ];
 
+  Widget _buildBlob1() {
+    return Container(
+      height: 300,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.secondary.withOpacity(0.7),
+            AppColors.secondary,
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.circular(500),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
-      body: SafeArea(
-        child: _tabs[_selectedIndex],
-      ),
+      backgroundColor: AppColors.lightTertiary,
+      // body: Stack(
+      //   children: [
+      //     // Blob positioned at the top
+      //     Positioned(
+      //       left: -100,
+      //       top: -50,
+      //       right: -100,
+      //       child: _buildBlob1(),
+      //     ),
+          // Main content
+      body:SafeArea(
+            child: _tabs[_selectedIndex],
+          ),
+        // ],
+      // ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
