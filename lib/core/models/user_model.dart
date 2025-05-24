@@ -76,7 +76,7 @@ class UserModel {
       'hsCodePreferences': hsCodePreferences,  // List is directly serializable
       'isPremium':isPremium,
       "premiumTransactionId":premiumTransactionId,
-      "premiumPurchaseDate":premiumPurchaseDate,
+      "premiumPurchaseDate": premiumPurchaseDate?.toDate().toIso8601String(),
     };
   }
 
@@ -96,7 +96,9 @@ class UserModel {
           : [],  // Convert to List<String> or provide empty list
       isPremium:map['isPremium']??false,
       premiumTransactionId:map["premiumTransactionId"]??'',
-      premiumPurchaseDate:map["premiumPurchaseDate"]??null,
+      premiumPurchaseDate:map["premiumPurchaseDate"] != null
+          ? Timestamp.fromDate(DateTime.parse(map["premiumPurchaseDate"]))
+          : null,
     );
   }
 
