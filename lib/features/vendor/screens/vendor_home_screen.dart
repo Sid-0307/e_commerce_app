@@ -1,5 +1,6 @@
 // lib/features/vendor/screens/vendor_home_screen.dart
 
+import 'package:another_flushbar/flushbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/widgets/auth_wrapper.dart';
@@ -11,7 +12,9 @@ import '../../../core/constants/text_styles.dart';
 import '../../../core/widgets/custom_button.dart';
 
 class VendorHomeScreen extends StatefulWidget {
-  const VendorHomeScreen({Key? key}) : super(key: key);
+  final String? flushbarMessage;
+
+  const VendorHomeScreen({Key? key,this.flushbarMessage}) : super(key: key);
 
   @override
   State<VendorHomeScreen> createState() => _VendorHomeScreenState();
@@ -19,12 +22,46 @@ class VendorHomeScreen extends StatefulWidget {
 
 class _VendorHomeScreenState extends State<VendorHomeScreen> {
   int _selectedIndex = 0;
+  bool _hasShownFlushbar = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.flushbarMessage == null) {
+      _hasShownFlushbar = true;
+    }
+  }
 
   final List<Widget> _tabs = [
     const ProductsTab(),
     const RequestsTab(),
     const ProfileTab(),
   ];
+
+  void _showSuccessFlushbar(BuildContext context,String message) {
+    if (!mounted) return;
+
+    Flushbar(
+      message: message,
+      icon: Icon(
+        Icons.check_circle,
+        color: Colors.white,
+        size: 24,
+      ),
+      duration: Duration(seconds: 3),
+      leftBarIndicatorColor: Colors.green,
+      backgroundColor: Colors.green.shade600,
+      borderRadius: BorderRadius.circular(12),
+      margin: EdgeInsets.all(16),
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      messageColor: Colors.white,
+      messageSize: 14,
+      animationDuration: Duration(milliseconds: 300),
+      forwardAnimationCurve: Curves.easeOutBack,
+      reverseAnimationCurve: Curves.easeInBack,
+    ).show(context);
+  }
+
 
   Widget _buildBlob1() {
     return Container(
@@ -45,23 +82,17 @@ class _VendorHomeScreenState extends State<VendorHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.flushbarMessage != null && !_hasShownFlushbar) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showSuccessFlushbar(context, widget.flushbarMessage!);
+      });
+      _hasShownFlushbar = true;
+    }
     return Scaffold(
       backgroundColor: AppColors.lightTertiary,
-      // body: Stack(
-      //   children: [
-      //     // Blob positioned at the top
-      //     Positioned(
-      //       left: -100,
-      //       top: -50,
-      //       right: -100,
-      //       child: _buildBlob1(),
-      //     ),
-          // Main content
       body:SafeArea(
             child: _tabs[_selectedIndex],
           ),
-        // ],
-      // ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,

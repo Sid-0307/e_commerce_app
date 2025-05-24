@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import '../constants/colors.dart';
 
-class CustomTextField extends StatelessWidget {
+class CustomTextField extends StatefulWidget {
   final String labelText;
   final bool obscureText;
   final TextEditingController controller;
   final String? Function(String?)? validator;
   final TextInputType keyboardType;
-  final Icon? prefixIcon; // Added optional prefix icon
-  final Color? prefixIconColor; // Added optional prefix icon color
+  final Icon? prefixIcon;
+  final Color? prefixIconColor;
+  final Widget? suffixIcon;
 
   const CustomTextField({
     super.key,
@@ -17,45 +18,86 @@ class CustomTextField extends StatelessWidget {
     required this.controller,
     this.validator,
     this.keyboardType = TextInputType.text,
-    this.prefixIcon, // Adding to constructor
-    this.prefixIconColor, // Adding to constructor
+    this.prefixIcon,
+    this.prefixIconColor,
+    this.suffixIcon,
   });
+
+  @override
+  State<CustomTextField> createState() => _CustomTextFieldState();
+}
+
+class _CustomTextFieldState extends State<CustomTextField> {
+  bool _showSuffix = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_handleTextChange);
+    _showSuffix = widget.controller.text.isNotEmpty;
+  }
+
+  void _handleTextChange() {
+    final hasText = widget.controller.text.isNotEmpty;
+    if (_showSuffix != hasText) {
+      setState(() {
+        _showSuffix = hasText;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_handleTextChange);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return TextFormField(
-      controller: controller,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      validator: validator,
+      controller: widget.controller,
+      obscureText: widget.obscureText,
+      keyboardType: widget.keyboardType,
+      validator: widget.validator,
       decoration: InputDecoration(
-        labelText: labelText,
+        labelText: widget.labelText,
         labelStyle: TextStyle(
           color: AppColors.black.withOpacity(0.6),
-          // fontFamily: 'Montserrat',
         ),
         floatingLabelBehavior: FloatingLabelBehavior.auto,
         filled: true,
         fillColor: AppColors.tertiary.withOpacity(0.15),
         contentPadding: EdgeInsets.symmetric(
-            horizontal: prefixIcon != null ? 8 : 16,
-            vertical: 16
+          horizontal: widget.prefixIcon != null ? 8 : 16,
+          vertical: 16,
         ),
-        prefixIcon: prefixIcon != null
+        prefixIcon: widget.prefixIcon != null
             ? Padding(
           padding: const EdgeInsets.only(left: 12, right: 8),
           child: IconTheme(
             data: IconThemeData(
-              color: prefixIconColor ?? AppColors.primary.withOpacity(0.7),
+              color: widget.prefixIconColor ?? AppColors.primary.withOpacity(0.7),
               size: 20,
             ),
-            child: prefixIcon!,
+            child: widget.prefixIcon!,
+          ),
+        )
+            : null,
+        suffixIcon: (_showSuffix && widget.suffixIcon != null)
+            ? Padding(
+          padding: const EdgeInsets.only(left: 12, right: 8),
+          child: IconTheme(
+            data: IconThemeData(
+              color: AppColors.primary.withOpacity(0.7),
+              size: 20,
+            ),
+            child: widget.suffixIcon!,
           ),
         )
             : null,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide.none, // Dark border
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -71,12 +113,8 @@ class CustomTextField extends StatelessWidget {
         ),
         floatingLabelStyle: TextStyle(
           color: AppColors.primary.withOpacity(0.6),
-          // fontFamily: 'Montserrat',
           fontWeight: FontWeight.w500,
         ),
-      ),
-      style: const TextStyle(
-        // fontFamily: 'Montserrat',
       ),
     );
   }

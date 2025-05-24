@@ -34,6 +34,14 @@ class _LoginScreenState extends State<LoginScreen> {
   final _authService = AuthService();
   bool _isLoading = false;
 
+  bool _obscurePassword = true;
+
+  void _togglePasswordVisibility() {
+    setState(() {
+      _obscurePassword = !_obscurePassword;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -378,7 +386,13 @@ class _LoginScreenState extends State<LoginScreen> {
                               labelText: 'Password',
                               controller: _passwordController,
                               prefixIcon: const Icon(Icons.lock_outlined),
-                              obscureText: true,
+                              obscureText: _obscurePassword,
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                ),
+                                onPressed: _togglePasswordVisibility,
+                              ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
                                   return 'Please enter your password';
