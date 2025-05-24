@@ -11,11 +11,13 @@ import '../services/auth_service.dart';
 import 'login_screen.dart';
 
 class EmailVerificationScreen extends StatefulWidget {
+  final void Function(String) onSwitch;
   final String email;
 
   const EmailVerificationScreen({
     Key? key,
     required this.email,
+    required this.onSwitch,
   }) : super(key: key);
 
   @override
@@ -71,10 +73,11 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
           // Give user time to see the success message before redirecting
           Future.delayed(const Duration(seconds: 2), () {
             if (mounted) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-              );
+              // Navigator.pushReplacement(
+              //   context,
+              //   MaterialPageRoute(builder: (context) => const LoginScreen()),
+              // );
+              widget.onSwitch('login');
             }
           });
         }
@@ -135,104 +138,104 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: AuthWrapper(
-        child: Center(
-          child: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  AuthCard(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(height: 16),
-                        Text(
-                          'MLLIG',
-                          style: AppTextStyles.appName.copyWith(
-                            foreground: Paint()..color = AppColors.primary,
-                            shadows: [
-                              Shadow(
-                                blurRadius: 10,
-                                color: AppColors.tertiary.withOpacity(0.6),
-                                offset: Offset(0, 0),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Icon(
-                          Icons.email_outlined,
-                          size: 50,
-                          color: AppColors.primary,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'We sent a verification email to:',
-                          style: AppTextStyles.subheading,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          widget.email,
-                          style: AppTextStyles.subheading.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Please check your inbox and click the verification link to activate your account.',
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 24),
-                        _isEmailVerified
-                            ? CustomButton(
-                          text: 'Proceed to Login',
-                          onPressed: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(builder: (context) => const LoginScreen()),
-                            );
-                          },
-                        )
-                            : Column(
-                          children: [
-
-                            CustomButton(
-                              text: _canResendEmail
-                                  ? 'Resend Verification Email'
-                                  : 'Resend Email in $_resendCooldown s',
-                              onPressed: () {
-                                if (_canResendEmail) {
-                                  _resendVerificationEmail();
-                                }
-                              },
-                            ),
-
-                            const SizedBox(height: 16),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const LoginScreen()),
-                                );
-                              },
-                              child: Text(
-                                'Back to Login',
-                                style: AppTextStyles.linkText,
-                              ),
+      backgroundColor: Colors.transparent,
+      body: Center(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AuthCard(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(height: 16),
+                      Text(
+                        'MLLIG',
+                        style: AppTextStyles.appName.copyWith(
+                          foreground: Paint()..color = AppColors.primary,
+                          shadows: [
+                            Shadow(
+                              blurRadius: 10,
+                              color: AppColors.tertiary.withOpacity(0.6),
+                              offset: Offset(0, 0),
                             ),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Icon(
+                        Icons.email_outlined,
+                        size: 50,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'We sent a verification email to:',
+                        style: AppTextStyles.subheading,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        widget.email,
+                        style: AppTextStyles.subheading.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Please check your inbox and click the verification link to activate your account.',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      _isEmailVerified
+                          ? CustomButton(
+                        text: 'Proceed to Login',
+                        onPressed: () {
+                          // Navigator.pushReplacement(
+                          //   context,
+                          //   MaterialPageRoute(builder: (context) => const LoginScreen()),
+                          // );
+                          widget.onSwitch('login');
+                        },
+                      )
+                          : Column(
+                        children: [
+
+                          CustomButton(
+                            text: _canResendEmail
+                                ? 'Resend Verification Email'
+                                : 'Resend Email in $_resendCooldown s',
+                            onPressed: () {
+                              if (_canResendEmail) {
+                                _resendVerificationEmail();
+                              }
+                            },
+                          ),
+
+                          const SizedBox(height: 16),
+                          TextButton(
+                            onPressed: () {
+                              // Navigator.pushReplacement(
+                              //   context,
+                              //   MaterialPageRoute(builder: (context) => const LoginScreen()),
+                              // );
+                              widget.onSwitch('login');
+                            },
+                            child: Text(
+                              'Back to Login',
+                              style: AppTextStyles.linkText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

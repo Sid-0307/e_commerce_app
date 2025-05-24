@@ -4,50 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:simple_animations/animation_builder/custom_animation_builder.dart';
 import 'package:simple_animations/movie_tween/movie_tween.dart';
 
-// Singleton to manage persistent animation controllers
-class BackgroundDecorations {
-  static final BackgroundDecorations _instance = BackgroundDecorations._internal();
-  factory BackgroundDecorations() => _instance;
-  BackgroundDecorations._internal();
-
-  AnimationController? _blob1Controller;
-  AnimationController? _particlesController;
-  List<ParticleModel>? _particles;
-  bool _isInitialized = false;
-
-  bool get isInitialized => _isInitialized;
-  AnimationController? get blob1Controller => _blob1Controller;
-  AnimationController? get particlesController => _particlesController;
-  List<ParticleModel>? get particles => _particles;
-
-  void initialize(TickerProvider vsync) {
-    if (!_isInitialized) {
-      _blob1Controller = AnimationController(
-        vsync: vsync,
-        duration: const Duration(seconds: 12),
-      )..repeat();
-
-      _particlesController = AnimationController(
-        vsync: vsync,
-        duration: const Duration(seconds: 30),
-      )..repeat();
-
-      _particles = List.generate(100, (index) => ParticleModel());
-      _isInitialized = true;
-    }
-  }
-
-  void dispose() {
-    _blob1Controller?.dispose();
-    _particlesController?.dispose();
-    _blob1Controller = null;
-    _particlesController = null;
-    _particles = null;
-    _isInitialized = false;
-  }
-}
-
-// Updated BackgroundDecorations using the singleton
+// Simplified BackgroundDecorations without singleton
 class BackgroundDecorationsState extends StatefulWidget {
   const BackgroundDecorationsState({super.key});
 
@@ -57,26 +14,46 @@ class BackgroundDecorationsState extends StatefulWidget {
 
 class _BackgroundDecorationsState extends State<BackgroundDecorationsState>
     with TickerProviderStateMixin {
-  late BackgroundDecorations _manager;
+  late AnimationController _blob1Controller;
+  late AnimationController _particlesController;
+  late List<ParticleModel> _particles;
 
   @override
   void initState() {
     super.initState();
-    _manager = BackgroundDecorations();
-    _manager.initialize(this);
+
+    _blob1Controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 12),
+    )..repeat();
+
+    _particlesController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 30),
+    )..repeat();
+
+    _particles = List.generate(100, (index) => ParticleModel());
+  }
+
+  @override
+  void dispose() {
+    _blob1Controller.dispose();
+    _particlesController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_manager.isInitialized) {
-      return const SizedBox.shrink();
-    }
-
     return Stack(
       fit: StackFit.expand,
       children: [
+        // Full background color
+        Container(
+          color: AppColors.lightTertiary,
+        ),
+
         // Floating particles
-        ...(_manager.particles?.map((particle) => _buildParticle(particle, context)) ?? []),
+        ..._particles.map((particle) => _buildParticle(particle, context)),
 
         // Top blob
         Positioned(
@@ -86,7 +63,7 @@ class _BackgroundDecorationsState extends State<BackgroundDecorationsState>
           child: _buildBlob1(),
         ),
 
-        // Gradient overlay
+        // Optional: gradient overlay on top
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -106,9 +83,9 @@ class _BackgroundDecorationsState extends State<BackgroundDecorationsState>
 
   Widget _buildBlob1() {
     return AnimatedBuilder(
-      animation: _manager.blob1Controller!,
+      animation: _blob1Controller,
       builder: (context, child) {
-        final value = _manager.blob1Controller!.value;
+        final value = _blob1Controller.value;
         final scale = 1.0 + 0.1 * math.sin(value * math.pi * 2);
 
         return Transform.translate(
@@ -144,9 +121,9 @@ class _BackgroundDecorationsState extends State<BackgroundDecorationsState>
     final screenHeight = MediaQuery.of(context).size.height;
 
     return AnimatedBuilder(
-      animation: _manager.particlesController!,
+      animation: _particlesController,
       builder: (context, child) {
-        final progress = ((_manager.particlesController!.value + particle.initialProgress) % 1.0);
+        final progress = ((_particlesController.value + particle.initialProgress) % 1.0);
 
         return Positioned(
           left: screenWidth * (particle.x + 0.1 * math.sin(progress * math.pi * 2)),
@@ -176,16 +153,9 @@ class _BackgroundDecorationsState extends State<BackgroundDecorationsState>
       },
     );
   }
-
-  // Don't dispose the singleton controllers in individual widgets
-  @override
-  void dispose() {
-    // The singleton will manage its own lifecycle
-    super.dispose();
-  }
 }
 
-// Your ParticleModel class (keep as is)
+// ParticleModel class (unchanged)
 class ParticleModel {
   final double x;
   final double size;
@@ -211,7 +181,7 @@ class ParticleModel {
   }
 }
 
-// Alternative implementation with simple_animations package
+// Alternative implementation with simple_animations package (unchanged)
 class AnimatedBackgroundDecorations extends StatelessWidget {
   final Widget child;
 
@@ -280,6 +250,6 @@ class AnimatedBackgroundDecorations extends StatelessWidget {
           ],
         );
       },
-      // child:child,
     );
-  }}
+  }
+}

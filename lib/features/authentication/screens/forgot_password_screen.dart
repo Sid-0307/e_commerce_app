@@ -12,7 +12,8 @@ import '../widgets/logo_widget.dart';
 import '../services/auth_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
-  const ForgotPasswordScreen({super.key});
+  final void Function(String) onSwitch;
+  const ForgotPasswordScreen({super.key,required this.onSwitch});
 
   @override
   State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
@@ -116,115 +117,113 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      backgroundColor: AppColors.background,
-      body: AuthWrapper(
-        child: Center(
-          child: SingleChildScrollView(
-            child: Center(
-              child: Column(
-                children: [
-                  AuthCard(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(height: 10),
-                        Text(
-                          'MLLIG',
-                          style: AppTextStyles.appName.copyWith(
-                            foreground: Paint()..color = AppColors.primary,
-                            shadows: [
-                              Shadow(
-                                blurRadius: 10,
-                                color: AppColors.tertiary.withOpacity(0.6),
-                                offset: Offset(0, 0),
+      backgroundColor: Colors.transparent,
+      body: Center(
+        child: SingleChildScrollView(
+          child: Center(
+            child: Column(
+              children: [
+                AuthCard(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(height: 10),
+                      Text(
+                        'MLLIG',
+                        style: AppTextStyles.appName.copyWith(
+                          foreground: Paint()..color = AppColors.primary,
+                          shadows: [
+                            Shadow(
+                              blurRadius: 10,
+                              color: AppColors.tertiary.withOpacity(0.6),
+                              offset: Offset(0, 0),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (_emailSent)
+                        Column(
+                          children: [
+                            const Icon(
+                              Icons.check_circle_outline,
+                              color: Colors.green,
+                              size: 72,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Reset Email Sent',
+                              style: AppTextStyles.subheading,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'We\'ve sent a password reset link to ${_emailController.text}',
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 24),
+                            CustomButton(
+                              text: 'Back to Login',
+                              onPressed: () {
+                                widget.onSwitch('login');
+                              },
+                            ),
+                          ],
+                        )
+                      else
+                        Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Enter your email and we\'ll send you a link to get back into your account',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 32),
+                              CustomTextField(
+                                labelText: 'Email',
+                                controller: _emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                prefixIcon: const Icon(Icons.email_outlined),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter your email';
+                                  }
+                                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                                    return 'Please enter a valid email';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 24),
+                              _isLoading
+                                  ? const Center(child: CircularProgressIndicator())
+                                  : CustomButton(
+                                text: 'Reset Password',
+                                onPressed: _resetPassword,
+                              ),
+                              const SizedBox(height: 16),
+                              Center(
+                                child: TextButton(
+                                  onPressed: () {
+                                    widget.onSwitch('login');
+                                  },
+                                  child: Text(
+                                    'Back to Login',
+                                    style: AppTextStyles.linkText,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        if (_emailSent)
-                          Column(
-                            children: [
-                              const Icon(
-                                Icons.check_circle_outline,
-                                color: Colors.green,
-                                size: 72,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Reset Email Sent',
-                                style: AppTextStyles.subheading,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'We\'ve sent a password reset link to ${_emailController.text}',
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 24),
-                              CustomButton(
-                                text: 'Back to Login',
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                },
-                              ),
-                            ],
-                          )
-                        else
-                          Form(
-                            key: _formKey,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Enter your email and we\'ll send you a link to get back into your account',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const SizedBox(height: 32),
-                                CustomTextField(
-                                  labelText: 'Email',
-                                  controller: _emailController,
-                                  keyboardType: TextInputType.emailAddress,
-                                  prefixIcon: const Icon(Icons.email_outlined),
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Please enter your email';
-                                    }
-                                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                                      return 'Please enter a valid email';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 24),
-                                _isLoading
-                                    ? const Center(child: CircularProgressIndicator())
-                                    : CustomButton(
-                                  text: 'Reset Password',
-                                  onPressed: _resetPassword,
-                                ),
-                                const SizedBox(height: 16),
-                                Center(
-                                  child: TextButton(
-                                    onPressed: () {
-                                      Navigator.pop(context);
-                                    },
-                                    child: Text(
-                                      'Back to Login',
-                                      style: AppTextStyles.linkText,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

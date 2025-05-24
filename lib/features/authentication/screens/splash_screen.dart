@@ -14,7 +14,8 @@ import '../services/auth_service.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  final void Function(String) onSwitch;
+  const SplashScreen({super.key, required this.onSwitch});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -75,40 +76,36 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         // Set user in provider
         await Provider.of<UserProvider>(context, listen: false).setCurrentUser(user);
 
-        // Navigate based on user type
+        // Navigate based on user type using Navigator (outside AuthWrapper)
         if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) {
-                if (user.userType == 'Seller') {
-                  return const VendorHomeScreen();
-                } else if (user.userType == 'Buyer') {
-                  return const BuyerHomeScreen();
-                } else if (user.userType == 'Admin') {
-                  return const AdminHomeScreen();
-                } else {
-                  // Fallback
-                  return const LoginScreen();
-                }
-              },
-            ),
-          );
+          if (user.userType == 'Seller') {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const VendorHomeScreen()),
+                  (route) => false,
+            );
+          } else if (user.userType == 'Buyer') {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const BuyerHomeScreen()),
+                  (route) => false,
+            );
+          } else if (user.userType == 'Admin') {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const AdminHomeScreen()),
+                  (route) => false,
+            );
+          } else {
+            // Invalid userType, fallback to login screen
+            widget.onSwitch('login');
+          }
         }
       } else if (mounted) {
         // No user found, go to login
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
+        widget.onSwitch('login');
       }
     } catch (e) {
       // Error occurred, go to login
       if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
+        widget.onSwitch('login');
       }
     }
   }
@@ -116,57 +113,55 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: false,
-      body: AuthWrapper(
-        child: Center(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) {
-              return Opacity(
-                opacity: _opacityAnimation.value,
-                child: Transform.scale(
-                  scale: _scaleAnimation.value,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      AuthCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(32.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              // Logo or app name
-                              Text(
-                                'MLLIG',
-                                style: AppTextStyles.appName.copyWith(
-                                  fontSize: 42,
-                                  foreground: Paint()..color = AppColors.primary,
-                                  shadows: [
-                                    Shadow(
-                                      blurRadius: 10,
-                                      color: AppColors.tertiary.withOpacity(0.6),
-                                      offset: const Offset(0, 0),
-                                    ),
-                                  ],
-                                ),
+      body: Center(
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Opacity(
+              opacity: _opacityAnimation.value,
+              child: Transform.scale(
+                scale: _scaleAnimation.value,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    AuthCard(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Logo or app name
+                            Text(
+                              'MLLIG',
+                              style: AppTextStyles.appName.copyWith(
+                                fontSize: 42,
+                                foreground: Paint()..color = AppColors.primary,
+                                shadows: [
+                                  Shadow(
+                                    blurRadius: 10,
+                                    color: AppColors.tertiary.withOpacity(0.6),
+                                    offset: const Offset(0, 0),
+                                  ),
+                                ],
                               ),
+                            ),
 
-                              const SizedBox(height: 24),
+                            const SizedBox(height: 24),
 
-                              // Loading indicator
-                              const CircularProgressIndicator(),
-                              const SizedBox(height: 24),
-                            ],
-                          ),
+                            // Loading indicator
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 24),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ),
     );

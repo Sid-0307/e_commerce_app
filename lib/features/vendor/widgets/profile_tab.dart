@@ -1,3 +1,4 @@
+import 'package:e_commerce_app/core/widgets/auth_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
@@ -93,7 +94,7 @@ class _ProfileTabState extends State<ProfileTab> {
       // Navigate to login screen
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
-          builder: (context) => const LoginScreen(),
+          builder: (context) => const AuthWrapper(initialScreen: 'login'),
         ),
             (route) => false, // Remove all previous routes
       );

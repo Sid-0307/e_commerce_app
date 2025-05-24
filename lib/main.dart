@@ -50,56 +50,18 @@ class MyApp extends StatelessWidget {
         providers: [
           ChangeNotifierProvider(create: (context) => UserProvider()),
         ],
-        child:AppLifecycleManager(
-          child: MaterialApp(
-            initialRoute: AppRoutes.initial,
-            onGenerateRoute: AppRouter.generateRoute,
-            title: 'Auth App',
-            debugShowCheckedModeBanner: false,
-            theme: ThemeData(
-              primaryColor: AppColors.primary,
-              colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
-              scaffoldBackgroundColor: AppColors.background,
-              fontFamily: 'Roboto',
-            ),
+        child: MaterialApp(
+          initialRoute: AppRoutes.initial,
+          onGenerateRoute: AppRouter.generateRoute,
+          title: 'Auth App',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            primaryColor: AppColors.primary,
+            colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
+            scaffoldBackgroundColor: AppColors.background,
+            fontFamily: 'Roboto',
           ),
         )
     );
-  }
-}
-
-class AppLifecycleManager extends StatefulWidget {
-  final Widget child;
-
-  const AppLifecycleManager({super.key, required this.child});
-
-  @override
-  State<AppLifecycleManager> createState() => _AppLifecycleManagerState();
-}
-
-class _AppLifecycleManagerState extends State<AppLifecycleManager> with WidgetsBindingObserver {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    BackgroundDecorations().dispose();
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.detached) {
-      BackgroundDecorations().dispose();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return widget.child;
   }
 }

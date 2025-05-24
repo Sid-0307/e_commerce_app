@@ -5,6 +5,7 @@ import 'package:e_commerce_app/features/authentication/screens/splash_screen.dar
 import 'package:flutter/material.dart';
 
 // Import all screens that need routes
+import 'core/widgets/auth_wrapper.dart';
 import 'features/authentication/screens/login_screen.dart';
 import 'features/authentication/screens/signup_screen.dart';
 import 'features/authentication/screens/forgot_password_screen.dart';
@@ -16,6 +17,7 @@ import 'features/vendor/screens/vendor_home_screen.dart';
 class AppRoutes {
   static const String initial = '/';
   static const String login = '/login';
+  static const String auth = '/auth'; // Replaces login, signup, forgot, etc.
   static const String signup = '/signup';
   static const String admin = '/admin';
   static const String forgotPassword = '/forgot-password';
@@ -28,19 +30,21 @@ class AppRoutes {
 class AppRouter {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
+      // case AppRoutes.initial:
+      //   return MaterialPageRoute(builder: (_) => const SplashScreen());
       case AppRoutes.initial:
-        return MaterialPageRoute(builder: (_) => const SplashScreen());
-      case AppRoutes.login:
-        return MaterialPageRoute(builder: (_) => const LoginScreen());
+        return MaterialPageRoute(builder: (_) => const AuthWrapper());
+      // case AppRoutes.login:
+      //   return MaterialPageRoute(builder: (_) => const LoginScreen());
 
       case AppRoutes.admin:
         return MaterialPageRoute(builder: (_) => const AdminHomeScreen());
 
-      case AppRoutes.signup:
-        return MaterialPageRoute(builder: (_) => const SignupScreen());
+      // case AppRoutes.signup:
+      //   return MaterialPageRoute(builder: (_) => const SignupScreen());
 
-      case AppRoutes.forgotPassword:
-        return MaterialPageRoute(builder: (_) => const ForgotPasswordScreen());
+      // case AppRoutes.forgotPassword:
+      //   return MaterialPageRoute(builder: (_) => const ForgotPasswordScreen());
 
       case AppRoutes.vendorHome:
         return MaterialPageRoute(builder: (_) => const VendorHomeScreen());

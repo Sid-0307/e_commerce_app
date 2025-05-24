@@ -21,7 +21,9 @@ import 'signup_screen.dart';
 import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final void Function(String) onSwitch;
+
+  const LoginScreen({super.key,required this.onSwitch});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -45,60 +47,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // Check if user is already logged in as soon as the login screen initializes
-    _checkCurrentUser();
-  }
-
-  Future<void> _checkCurrentUser() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      UserModel? user = await _authService.getCurrentUser();
-
-      if (user != null && mounted) {
-        // Set user in provider
-        await Provider.of<UserProvider>(context, listen: false).setCurrentUser(
-            user);
-
-        // Navigate based on user type
-        if (mounted) {
-          // Navigate based on user type
-          if (user.userType == 'Seller') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const VendorHomeScreen(),
-              ),
-            );
-          } else if (user.userType == 'Buyer') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const BuyerHomeScreen(),
-              ),
-            );
-          } else if (user.userType == 'Admin') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const AdminHomeScreen(),
-              ),
-            );
-          }
-        }
-      }
-    } catch (e) {
-      // Error checking user, but we don't need to show any message
-      // Just let the user continue to the login screen
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
   }
 
   @override
@@ -333,127 +281,127 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      backgroundColor: AppColors.lightTertiary,
-      body: AuthWrapper(
-        child: Center(
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                AuthCard(
-                  child: Column(
-                    children: [
-                      // const LogoWidget(),
-                      const SizedBox(height: 16),
-                      // Title inside the AuthCard
-                      Text(
-                        'MLLIG',
-                        style: AppTextStyles.appName.copyWith(
-                          foreground: Paint()..color = AppColors.primary,
-                          shadows: [
-                            Shadow(
-                              blurRadius: 10,
-                              color: AppColors.tertiary.withOpacity(0.6),
-                              offset: Offset(0, 0),
-                            ),
-                          ],
-                        ),
+      backgroundColor: Colors.transparent,
+      body: Center(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AuthCard(
+                child: Column(
+                  children: [
+                    // const LogoWidget(),
+                    const SizedBox(height: 16),
+                    // Title inside the AuthCard
+                    Text(
+                      'MLLIG',
+                      style: AppTextStyles.appName.copyWith(
+                        foreground: Paint()..color = AppColors.primary,
+                        shadows: [
+                          Shadow(
+                            blurRadius: 10,
+                            color: AppColors.tertiary.withOpacity(0.6),
+                            offset: Offset(0, 0),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 24),
-                      // Form elements
-                      Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            CustomTextField(
-                              labelText: 'Email',
-                              controller: _emailController,
-                              keyboardType: TextInputType.emailAddress,
-                              prefixIcon: const Icon(Icons.email_outlined),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter your email';
-                                }
-                                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                                  return 'Please enter a valid email';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            CustomTextField(
-                              labelText: 'Password',
-                              controller: _passwordController,
-                              prefixIcon: const Icon(Icons.lock_outlined),
-                              obscureText: _obscurePassword,
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                                ),
-                                onPressed: _togglePasswordVisibility,
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter your password';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 24),
-                            _isLoading
-                                ? const Center(child: CircularProgressIndicator())
-                                : CustomButton(
-                              text: 'Log In',
-                              onPressed: _login,
-                            ),
-                            const SizedBox(height: 16),
-                            Center(
-                              child: TextButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const ForgotPasswordScreen(),
-                                    ),
-                                  );
-                                },
-                                child: Text(
-                                  'Forgot password?',
-                                  style: AppTextStyles.linkText,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // "Don't have an account?" text and Sign up button inside the AuthCard
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                    ),
+                    const SizedBox(height: 24),
+                    // Form elements
+                    Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("Don't have an account?"),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const SignupScreen(),
-                                ),
-                              );
+                          CustomTextField(
+                            labelText: 'Email',
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            prefixIcon: const Icon(Icons.email_outlined),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your email';
+                              }
+                              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                                return 'Please enter a valid email';
+                              }
+                              return null;
                             },
-                            child: Text(
-                              'Sign up',
-                              style: AppTextStyles.linkText,
+                          ),
+                          const SizedBox(height: 16),
+                          CustomTextField(
+                            labelText: 'Password',
+                            controller: _passwordController,
+                            prefixIcon: const Icon(Icons.lock_outlined),
+                            obscureText: _obscurePassword,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                              ),
+                              onPressed: _togglePasswordVisibility,
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your password';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 24),
+                          _isLoading
+                              ? const Center(child: CircularProgressIndicator())
+                              : CustomButton(
+                            text: 'Log In',
+                            onPressed: _login,
+                          ),
+                          const SizedBox(height: 16),
+                          Center(
+                            child: TextButton(
+                              onPressed: () {
+                                // Navigator.push(
+                                //   context,
+                                //   MaterialPageRoute(
+                                //     builder: (context) => const ForgotPasswordScreen(),
+                                //   ),
+                                // );
+                                widget.onSwitch('forgotPassword');
+                              },
+                              child: Text(
+                                'Forgot password?',
+                                style: AppTextStyles.linkText,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                    // "Don't have an account?" text and Sign up button inside the AuthCard
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text("Don't have an account?"),
+                        TextButton(
+                          onPressed: () {
+                            widget.onSwitch('signup');
+                            // Navigator.push(
+                            //   context,
+                            //   MaterialPageRoute(
+                            //     builder: (context) => const SignupScreen(),
+                            //   ),
+                            // );
+                          },
+                          child: Text(
+                            'Sign up',
+                            style: AppTextStyles.linkText,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
